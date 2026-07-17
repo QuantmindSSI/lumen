@@ -81,6 +81,14 @@ CREATE TABLE IF NOT EXISTS user_profile (
     ebbinghaus_half_life_days REAL DEFAULT 7.0
 );
 
+-- Migration tracking
+CREATE TABLE IF NOT EXISTS event_buffer_meta (
+    meta_id INTEGER PRIMARY KEY,
+    last_consolidation_at INTEGER,
+    last_decay_run_at INTEGER,
+    version INTEGER DEFAULT 0
+);
+
 CREATE INDEX IF NOT EXISTS idx_chunk_locus ON chunk(locus_id, vm_score DESC);
 CREATE INDEX IF NOT EXISTS idx_chunk_room ON chunk(room_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_chunk_valid ON chunk(valid_from, valid_to) WHERE valid_to IS NULL;
@@ -88,8 +96,10 @@ CREATE INDEX IF NOT EXISTS idx_chunk_hash ON chunk(content_hash);
 CREATE INDEX IF NOT EXISTS idx_feedback_chunk ON feedback_log(chunk_id, positive);
 
 -- Full-text search bridge (A2)
+-- External content table mapping to chunk.chunk_id
 CREATE VIRTUAL TABLE IF NOT EXISTS chunk_fts USING fts5(
     content, content_hash UNINDEXED,
-    content_rowid=chunk_id,
+    content='chunk',
+    content_rowid='chunk_id',
     tokenize='porter unicode61'
 );

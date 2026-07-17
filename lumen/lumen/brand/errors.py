@@ -33,6 +33,12 @@ class LocusConflictError(PalaceError):
     code = "LME-1002"
 
 
+class ConsolidationFailedError(PalaceError):
+    """Sleep-phase consolidation could not complete."""
+
+    code = "LME-1003"
+
+
 class ContextError(LumenError):
     """Errors within the context window (Force B)."""
 
@@ -51,10 +57,28 @@ class RetrievalEmptyError(ContextError):
     code = "LCX-2002"
 
 
+class AssemblyTimeoutError(ContextError):
+    """Context assembly exceeded its time budget."""
+
+    code = "LCX-2003"
+
+
 class TFCError(LumenError):
     """Twin-Force Controller state error."""
 
     code = "LLM-3001"
+
+
+class TFCStuckError(TFCError):
+    """TFC has entered an unrecoverable attractor state."""
+
+    code = "LLM-3002"
+
+
+class ValueModelUncalibratedError(TFCError):
+    """V(m) weights are not yet learned for this user."""
+
+    code = "LLM-3004"
 
 
 class SovereignViolationError(LumenError):

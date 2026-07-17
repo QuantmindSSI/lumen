@@ -38,3 +38,22 @@ class LumenConfig(BaseSettings):
     @property
     def db_uri(self) -> str:
         return f"{self.store_path}/lumen.db"
+
+    @property
+    def db_path(self) -> Path:
+        return self.store_path / "lumen.db"
+
+    def model_post_init(self, __context):
+        device_profiles = {
+            "rpi5": {"context_budget": 1024, "memory_limit_mb": 256, "vector_index": "sqlite-vec"},
+            "jetson-orin": {"context_budget": 2048, "memory_limit_mb": 512, "vector_index": "usearch"},
+            "orange-pi": {"context_budget": 1024, "memory_limit_mb": 256, "vector_index": "sqlite-vec"},
+            "generic": {"context_budget": 2048, "memory_limit_mb": 512, "vector_index": "sqlite-vec"},
+        }
+        profile = device_profiles.get(self.device, device_profiles["generic"])
+        if self.context_budget == 2048 and self.device != "generic":
+            self.context_budget = profile["context_budget"]
+        if self.memory_limit_mb == 300 and self.device != "generic":
+            self.memory_limit_mb = profile["memory_limit_mb"]
+        if self.vector_index == "sqlite-vec" and self.device != "generic":
+            self.vector_index = profile["vector_index"]

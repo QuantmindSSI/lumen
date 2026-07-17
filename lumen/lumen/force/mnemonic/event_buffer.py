@@ -47,14 +47,20 @@ class EventMemoryBuffer:
         with self._lock:
             return [e for e in self._buffer if e.timestamp >= since]
 
-    def drain_expired(self) -> list[Event]:
-        """Return and remove events older than max_age_hours for consolidation."""
-        cutoff = datetime.now(timezone.utc).timestamp() - (self.max_age_hours * 3600)
+    def drain_expired(self, cutoff_timestamp: float | None = None) -> list[Event]:
+        """Return and remove events older than max_age_hours for consolidation.
+
+        Args:
+            cutoff_timestamp: If provided, drain events with timestamp < cutoff.
+                              Defaults to now - max_age_hours.
+        """
+        if cutoff_timestamp is None:
+            cutoff_timestamp = datetime.now(timezone.utc).timestamp() - (self.max_age_hours * 3600)
         with self._lock:
-            expired = [e for e in self._buffer if e.timestamp < cutoff]
+            expired = [e for e in self._buffer if e.timestamp < cutoff_timestamp]
             # Retain only non-expired events
             self._buffer = deque(
-                [e for e in self._buffer if e.timestamp >= cutoff],
+                [e for e in self._buffer if e.timestamp >= cutoff_timestamp],
                 maxlen=self._buffer.maxlen,
             )
         return expired

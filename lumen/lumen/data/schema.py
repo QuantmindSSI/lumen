@@ -13,12 +13,28 @@ def init_db(conn: sqlite3.Connection) -> None:
 
 
 def get_connection(config) -> sqlite3.Connection:
-    """Return a SQLite connection initialised with the Lumen schema."""
+    """Return a SQLite connection initialised with the Lumen schema and optimised pragmas."""
     from lumen.config import LumenConfig
 
     cfg: LumenConfig = config
     cfg.store_path.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(cfg.store_path / "lumen.db"))
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA synchronous = NORMAL")
     conn.execute("PRAGMA foreign_keys = ON")
-    init_db(conn)
+    conn.execute("PRAGMA temp_store = MEMORY")
+    conn.execute("PRAGMA mmap_size = 268435456")
+    ensure_schema(conn)
     return conn
+
+
+def ensure_schema(conn: sqlite3.Connection) -> None:
+    """Check PRAGMA user_version and initialise schema if database is empty."""
+    user_version = conn.execute("PRAGMA user_version").fetchone()[0]
+    cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    tables = {row[0] for row in cursor.fetchall()}
+    if user_version == 0 and not tables:
+        init_db(conn)
+        conn.execute("PRAGMA user_version = 1")
+        conn.commit()
