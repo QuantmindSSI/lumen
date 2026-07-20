@@ -9,6 +9,7 @@ import json
 import sqlite3
 from dataclasses import dataclass
 
+from lumen.brand.errors import ModelNotAvailableError
 from lumen.config import LumenConfig
 from lumen.data.schema import get_connection
 from lumen.force.contextual.assembly import assemble_context
@@ -90,7 +91,7 @@ class ConversationMemory:
         else:
             try:
                 self.embedder = get_embedder(self.config, allow_mock=False)
-            except Exception:
+            except ModelNotAvailableError:
                 from lumen.force.contextual.embed import MockEmbedder
                 if logger:
                     logger.warning("conversation_using_mock_embedder")

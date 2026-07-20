@@ -12,7 +12,6 @@ Endpoints:
 
 from __future__ import annotations
 
-import os
 import sqlite3
 import time
 import uuid
@@ -243,7 +242,6 @@ async def lifespan(app: FastAPI):
     conn.close()
     logger.info("server_stopped")
 
-
 app.router.lifespan_context = lifespan
 
 
@@ -424,10 +422,13 @@ def main() -> None:
     """CLI entrypoint for production server."""
     import uvicorn
 
-    host = os.environ.get("LUMEN_API_HOST", _config.api_host)
-    port = int(os.environ.get("LUMEN_API_PORT", str(_config.api_port)))
-    log_level = os.environ.get("LUMEN_LOG_LEVEL", _config.log_level)
-    uvicorn.run("lumen.api.server:app", host=host, port=port, log_level=log_level)
+    cfg = LumenConfig()
+    uvicorn.run(
+        "lumen.api.server:app",
+        host=cfg.api_host,
+        port=cfg.api_port,
+        log_level=cfg.log_level,
+    )
 
 
 if __name__ == "__main__":

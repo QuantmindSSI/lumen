@@ -52,11 +52,17 @@ def serve(
     host: str = typer.Option("0.0.0.0", "--host", "-h"),
     port: int = typer.Option(8848, "--port", "-p"),
     reload: bool = typer.Option(False, "--reload"),
+    log_level: str = typer.Option("info", "--log-level"),
 ):
     """Start the FastAPI memory server."""
     import uvicorn
+
+    config = LumenConfig()
+    host = host or config.api_host
+    port = port or config.api_port
+    log_level = log_level or config.log_level
     console.print(f"[bold green]Starting Lumen API server on {host}:{port}[/bold green]")
-    uvicorn.run("lumen.api.server:app", host=host, port=port, reload=reload)
+    uvicorn.run("lumen.api.server:app", host=host, port=port, log_level=log_level, reload=reload)
 
 console = Console()
 
