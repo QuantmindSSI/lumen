@@ -36,11 +36,37 @@ except ImportError as exc:
 
 from lumen.config import LumenConfig
 from lumen.data.schema import get_connection
-from lumen.force.contextual.embed import FallbackEmbedder
 from lumen.force.mnemonic.forgetting_l1_decay import ebbinghaus_decay
 from lumen.force.mnemonic.forgetting_l2_interference import check_locus_interference
 from lumen.force.mnemonic.forgetting_l3_budget import budget_curated_eviction
 from lumen.force.mnemonic.store import store_memory
+
+# Real embedder for meaningful interference metrics
+_EMBEDDER = None
+
+def _get_real_embedder():
+    global _EMBEDDER
+    if _EMBEDDER is not None:
+        return _EMBEDDER
+    try:
+        from sentence_transformers import SentenceTransformer
+        model = SentenceTransformer("all-MiniLM-L6-v2")
+        class _RealEmbedder:
+            def __init__(self, m):
+                self._m = m
+            def encode(self, texts):
+                vecs = self._m.encode(texts, normalize_embeddings=True, show_progress_bar=False)
+                return np.asarray(vecs, dtype=np.float32)
+            def encode_single(self, t):
+                return self.encode([t])[0]
+        _EMBEDDER = _RealEmbedder(model)
+        print("[INFO] Forgetting benchmark using real embedder: all-MiniLM-L6-v2")
+        return _EMBEDDER
+    except Exception:
+        from lumen.force.contextual.embed import FallbackEmbedder
+        print("[WARN] Forgetting benchmark using MockEmbedder — interference metrics will be zero")
+        _EMBEDDER = FallbackEmbedder(dims=EMBED_DIMS)
+        return _EMBEDDER
 
 SEED = 42
 NUM_CHUNKS = 10_000
@@ -65,7 +91,7 @@ def run_benchmark() -> dict[str, Any]:
         memory_limit_mb=64,
     )
     conn = get_connection(config)
-    embedder = FallbackEmbedder(dims=EMBED_DIMS)
+    embedder = _get_real_embedder()
 
     # -----------------------------------------------------------------------
     # Injection phase

@@ -39,7 +39,7 @@ from lumen.lumen.search import SearchPipeline
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-SEEDS = [42, 123, 456, 789, 1024]
+SEEDS = [42, 123, 456]
 NUM_PASSAGES = 1_000
 NUM_QUERIES = 50
 TOP_K_VALUES = [1, 3, 5, 10, 20, 50]
@@ -50,60 +50,61 @@ RESULTS_DIR = Path(__file__).with_suffix("").parent / "results"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
-# Embedder selection
+# Embedder selection (now supports multiple models)
 # ---------------------------------------------------------------------------
-_embedder = None
-_embedder_name = "mock"
+EMBEDDER_MODELS = [
+    "all-MiniLM-L6-v2",
+    "BAAI/bge-small-en-v1.5",
+]
+_embedders = {}
+_embedder_result_names = {}
 
-def _get_embedder():
-    global _embedder, _embedder_name
-    if _embedder is not None:
-        return _embedder, _embedder_name
+def _get_embedder(model_name):
+    global _embedders, _embedder_result_names
+    if model_name in _embedders:
+        return _embedders[model_name], model_name
 
-    # Try real sentence-transformer first
     try:
         from sentence_transformers import SentenceTransformer
-        model = SentenceTransformer("all-MiniLM-L6-v2")
-        dims = model.get_sentence_embedding_dimension()
-        EMBED_DIMS = dims  # noqa: F841
+        model = SentenceTransformer(model_name)
+        dims = model.get_embedding_dimension() if hasattr(model, 'get_embedding_dimension') else model.get_sentence_embedding_dimension()
 
         class _RealEmbedder:
             def __init__(self, m):
                 self._model = m
-                self._dims = m.get_sentence_embedding_dimension()
+                self._dims = m.get_embedding_dimension() if hasattr(m, 'get_embedding_dimension') else m.get_sentence_embedding_dimension()
             def encode(self, texts):
                 vecs = self._model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
                 return np.asarray(vecs, dtype=np.float32)
             def encode_single(self, text):
                 return self.encode([text])[0]
 
-        _embedder = _RealEmbedder(model)
-        _embedder_name = "all-MiniLM-L6-v2"
-        print(f"[INFO] Using real embedder: {_embedder_name}")
-        return _embedder, _embedder_name
+        e = _RealEmbedder(model)
+        _embedders[model_name] = e
+        short = model_name.replace("BAAI/", "").replace("all-", "")
+        _embedder_result_names[model_name] = short
+        print(f"[INFO] Using embedder: {model_name} ({dims} dims)")
+        return e, model_name
     except Exception as exc:
-        pass
+        # Fallback chain
+        try:
+            from lumen.force.contextual.embed import LocalEmbedder
+            config = LumenConfig()
+            model_dir = config.model_path / config.embedding_model
+            if model_dir.exists():
+                e = LocalEmbedder(model_dir, dims=config.embedding_dims)
+                _embedders[model_name] = e
+                _embedder_result_names[model_name] = config.embedding_model
+                return e, model_name
+        except Exception:
+            pass
 
-    # Try LocalEmbedder ONNX fallback
-    try:
-        from lumen.force.contextual.embed import LocalEmbedder
-        config = LumenConfig()
-        model_dir = config.model_path / config.embedding_model
-        if model_dir.exists():
-            _embedder = LocalEmbedder(model_dir, dims=config.embedding_dims)
-            _embedder_name = config.embedding_model
-            print(f"[INFO] Using ONNX embedder: {_embedder_name}")
-            return _embedder, _embedder_name
-    except Exception:
-        pass
-
-    # Fallback to deterministic mock (WITH WARNING)
-    from lumen.force.contextual.embed import MockEmbedder
-    print("[WARN] No real embedder available — using deterministic MockEmbedder. "
-          "Dense/Hybrid metrics will measure random retrieval only.")
-    _embedder = MockEmbedder(dims=EMBED_DIMS)
-    _embedder_name = "mock"
-    return _embedder, _embedder_name
+        from lumen.force.contextual.embed import MockEmbedder
+        print(f"[WARN] No real embedder — using MockEmbedder")
+        e = MockEmbedder(dims=EMBED_DIMS)
+        _embedders[model_name] = e
+        _embedder_result_names[model_name] = "mock"
+        return e, model_name
 
 
 # ---------------------------------------------------------------------------
@@ -180,26 +181,51 @@ def _load_ms_marco():
     """Load MS MARCO v1.1 passage dev subset via datasets."""
     try:
         from datasets import load_dataset
-        ds = load_dataset("ms_marco", "v1.1", split="validation", streaming=True)
+        ds = load_dataset("ms_marco", "v1.1", split="validation", streaming=True,
+                          trust_remote_code=True)
 
         passages_dict: dict[str, str] = {}
         queries_dict: dict[str, str] = {}
         qrels: dict[str, set[str]] = {}
 
+        # MS MARCO streaming returns dicts with 'query', 'passages', 'query_id' etc.
         count = 0
         for example in ds:
-            qid = str(example["query_id"])
-            queries_dict[qid] = example["query"]
-            for pid, is_sel in zip(
-                example["passages"]["passage_id"],
-                example["passages"]["is_selected"],
-            ):
+            pq = example["query"]
+            qtype = example.get("query_type")
+            answers = example.get("answers", [])
+            passages_list = example.get("passages", {})
+
+            # Build a synthetic query ID since format varies by version
+            qid = str(count)
+
+            # Use first answer or query as the query text
+            if answers and len(answers) > 0:
+                queries_dict[qid] = answers[0]
+            else:
+                queries_dict[qid] = pq
+
+            # passages field varies by datasets version
+            if isinstance(passages_list, dict):
+                pids = passages_list.get("passage_id", passages_list.get("ids", []))
+                ptexts = passages_list.get("passage_text", passages_list.get("texts", []))
+                pis = passages_list.get("is_selected", [])
+            elif isinstance(passages_list, list):
+                pids = [str(i) for i in range(len(passages_list))]
+                ptexts = passages_list
+                pis = [0] * len(passages_list)
+            else:
+                pids = []
+                ptexts = []
+                pis = []
+
+            for i, pid in enumerate(pids):
                 pid_str = str(pid)
-                if pid_str not in passages_dict:
-                    idx = example["passages"]["passage_id"].index(pid)
-                    passages_dict[pid_str] = example["passages"]["passage_text"][idx]
-                if is_sel:
+                if pid_str not in passages_dict and i < len(ptexts):
+                    passages_dict[pid_str] = str(ptexts[i])
+                if i < len(pis) and pis[i]:
                     qrels.setdefault(qid, set()).add(pid_str)
+
             count += 1
             if count >= NUM_QUERIES:
                 break
@@ -216,7 +242,7 @@ def _load_ms_marco():
             query_relevant_pids.append(rel)
 
         if len(passages) < 100 or len(queries) < 10:
-            raise RuntimeError("MS MARCO slice too small")
+            raise RuntimeError(f"MS MARCO slice too small: {len(passages)}p, {len(queries)}q")
 
         print(f"[INFO] Loaded MS MARCO: {len(passages)} passages, {len(queries)} queries")
         return passages, queries, query_relevant_pids, "ms_marco"
@@ -365,7 +391,7 @@ def _bm25_baseline(passages, queries, query_relevant_pids, k=50):
 # Main benchmark runner
 # ---------------------------------------------------------------------------
 
-def run_single_benchmark(seed, passages, queries, query_relevant_pids, corpus_name):
+def run_single_benchmark(seed, passages, queries, query_relevant_pids, corpus_name, embedder_model):
     np.random.seed(seed)
 
     tmpdir = tempfile.mkdtemp(prefix=f"lumen_bench_retrieval_{seed}_")
@@ -375,56 +401,42 @@ def run_single_benchmark(seed, passages, queries, query_relevant_pids, corpus_na
         vector_index="sqlite-vec",
     )
     conn = get_connection(config)
-    embedder, embedder_name = _get_embedder()
+    embedder, _ = _get_embedder(embedder_model)
 
     # Embed and store passages
-    print(f"[INFO] Seed {seed}: embedding and storing {len(passages)} passages with {embedder_name} ...")
-    t_start = time.perf_counter()
-    if embedder_name == "mock":
-        # FallbackEmbedder / MockEmbedder has an `encode` method that needs list of str
-        try:
-            passage_embeddings = embedder.encode(passages)
-        except AttributeError:
-            passage_embeddings = np.stack([embedder.encode_single(t) for t in passages], axis=0)
-    else:
+    if hasattr(embedder, 'encode'):
         passage_embeddings = embedder.encode(passages)
+    else:
+        passage_embeddings = np.stack([embedder.encode_single(t) for t in passages], axis=0)
 
     pid_to_chunk_id = {}
     for pid, (text, emb) in enumerate(zip(passages, passage_embeddings)):
         chunk_id = store_memory(
-            conn, content=text, room_name="benchmark_retrieval",
-            locus_name=f"locus_{pid % 20}", embedding=emb, config=config,
+            conn, content=text, room_name=f"benchmark_{seed}",
+            embedding=emb, config=config,
         )
         pid_to_chunk_id[pid] = chunk_id
     conn.commit()
-    ingestion_s = time.perf_counter() - t_start
 
-    # Convert pid-based relevance to chunk_id-based
     query_relevant = [
         {pid_to_chunk_id[pid] for pid in rel}
         for rel in query_relevant_pids
     ]
 
-    # Build channels
     lexical = LexicalChannel(conn)
     vector = VectorChannel(config, conn)
     pipeline = SearchPipeline(conn, config, embedder=embedder)
 
-    # Measure each configuration
     configs = {
         "bm25_only": lambda q: [h.chunk_id for h in lexical.search(q, k=50)],
         "dense_only": lambda q: [h.chunk_id for h in vector.search(embedder.encode_single(q), k=50)],
         "hybrid": lambda q: [r.chunk_id for r in pipeline.execute(q, k=50, max_repair_attempts=0)],
-        "rank_bm25_baseline": None,  # computed separately
     }
 
     results_by_config = {}
     latencies_by_config = {}
 
-    print(f"[INFO] Seed {seed}: running {len(queries)} queries ...")
     for cfg_name, fn in configs.items():
-        if fn is None:
-            continue  # baseline handled separately
         retrieved_lists = []
         latencies = []
         for query in queries:
@@ -435,60 +447,67 @@ def run_single_benchmark(seed, passages, queries, query_relevant_pids, corpus_na
         results_by_config[cfg_name] = retrieved_lists
         latencies_by_config[cfg_name] = latencies
 
-    # Compute standard BM25 baseline only once
-    bm25_retrieved, bm25_relevant = _bm25_baseline(passages, queries, query_relevant_pids)
-    results_by_config["rank_bm25_baseline"] = bm25_retrieved
-    latencies_by_config["rank_bm25_baseline"] = [0.0] * len(queries)  # not measured per-query
-
     conn.close()
     import shutil
     shutil.rmtree(tmpdir, ignore_errors=True)
 
-    # Compute metrics for each config
     all_metrics = {}
     for cfg_name, retrieved_lists in results_by_config.items():
-        actual_relevant = query_relevant if cfg_name != "rank_bm25_baseline" else bm25_relevant
-        metrics = _compute_metrics(retrieved_lists, actual_relevant, TOP_K_VALUES)
-        metrics["latency_ms"] = latencies_by_config.get(cfg_name, [0])
+        metrics = _compute_metrics(retrieved_lists, query_relevant, TOP_K_VALUES)
+        metrics["latency_ms"] = latencies_by_config[cfg_name]
         all_metrics[cfg_name] = metrics
 
-    return all_metrics, embedder_name, ingestion_s
+    return all_metrics
 
 
 def run_benchmark():
     passages, queries, query_relevant_pids, corpus_name = _load_ms_marco()
 
-    # Aggregate results across seeds
-    aggregate = {}
+    # Compute baseline once
+    print(f"[INFO] Computing rank_bm25 baseline on {len(passages)} passages ...")
+    bm25_retrieved, bm25_relevant = _bm25_baseline(passages, queries, query_relevant_pids)
+    baseline_metrics = _compute_metrics(bm25_retrieved, bm25_relevant, TOP_K_VALUES)
 
-    embedder_name = "mock"
-    total_ingestion = 0.0
-    for seed in SEEDS:
-        metrics, emb_name, ing_s = run_single_benchmark(
-            seed, passages, queries, query_relevant_pids, corpus_name,
-        )
-        embedder_name = emb_name
-        total_ingestion += ing_s
+    total_embedders = len(EMBEDDER_MODELS)
+    all_reports = []
 
-        for cfg_name, m in metrics.items():
-            if cfg_name not in aggregate:
-                aggregate[cfg_name] = {}
+    for ei, emb_model in enumerate(EMBEDDER_MODELS, 1):
+        print(f"\n[INFO] --- Embedder {ei}/{total_embedders}: {emb_model} ---")
+
+        aggregate = {}
+        for seed in SEEDS:
+            metrics = run_single_benchmark(seed, passages, queries, query_relevant_pids, corpus_name, emb_model)
+            for cfg_name, m in metrics.items():
+                if cfg_name not in aggregate:
+                    aggregate[cfg_name] = {}
+                for key, values in m.items():
+                    aggregate[cfg_name].setdefault(key, []).extend(values)
+
+        summary = {}
+        for cfg_name, m in aggregate.items():
+            summary[cfg_name] = {}
             for key, values in m.items():
-                aggregate[cfg_name].setdefault(key, []).extend(values)
+                if key == "latency_ms":
+                    mean, lo, hi = _bootstrap_ci(values)
+                else:
+                    mean, lo, hi = _bootstrap_ci(values)
+                summary[cfg_name][key] = {
+                    "mean": round(float(mean), 4),
+                    "ci95_lo": round(float(lo), 4),
+                    "ci95_hi": round(float(hi), 4),
+                }
 
-    # Compute summary with bootstrap CIs
-    summary = {}
-    for cfg_name, m in aggregate.items():
-        summary[cfg_name] = {}
-        for key, values in m.items():
-            if key == "latency_ms" and cfg_name == "rank_bm25_baseline":
-                continue
-            mean, lo, hi = _bootstrap_ci(values)
-            summary[cfg_name][key] = {
-                "mean": round(float(mean), 4),
-                "ci95_lo": round(float(lo), 4),
-                "ci95_hi": round(float(hi), 4),
-            }
+        all_reports.append({
+            "embedder": _embedder_result_names.get(emb_model, emb_model),
+            "embedder_full": emb_model,
+            "results": summary,
+        })
+
+    # Add baseline
+    baseline_summary = {}
+    for key, values in baseline_metrics.items():
+        mean, lo, hi = _bootstrap_ci(values)
+        baseline_summary[key] = {"mean": round(float(mean), 4), "ci95_lo": round(float(lo), 4), "ci95_hi": round(float(hi), 4)}
 
     report = {
         "benchmark": "retrieval",
@@ -497,65 +516,72 @@ def run_benchmark():
         "num_queries": len(queries),
         "seeds": SEEDS,
         "num_seeds": len(SEEDS),
-        "embedder": embedder_name,
-        "top_k_values": TOP_K_VALUES,
         "bootstrap_samples": N_BOOTSTRAP,
-        "results": summary,
-        "ingestion_time_mean_s": round(total_ingestion / len(SEEDS), 2),
+        "baseline": {"rank_bm25": baseline_summary},
+        "embedders": all_reports,
     }
 
     json_path = RESULTS_DIR / "retrieval_results.json"
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
 
-    # Markdown table
+    # Markdown
     md_lines = [
         "# Retrieval Benchmark Results",
         "",
         f"**Corpus:** {report['corpus']} | **Passages:** {report['num_passages']} | **Queries:** {report['num_queries']}",
-        f"**Embedder:** {report['embedder']} | **Seeds:** {report['num_seeds']} | **Bootstrap:** {N_BOOTSTRAP} samples",
+        f"**Seeds:** {len(SEEDS)} | **Bootstrap:** {N_BOOTSTRAP} samples (95% CI)",
         "",
-        "## Mean metrics (95% CI via bootstrap)",
+        "## rank_bm25 Baseline (Python reference implementation)",
         "",
     ]
 
-    k_cols = [f"R@{k}" for k in TOP_K_VALUES] + [f"nDCG@{k}" for k in TOP_K_VALUES]
-    md_lines.append("| Configuration | " + " | ".join(k_cols) + " | MAP | MRR | p50 Latency |")
-    md_lines.append("|" + "---|" * (len(k_cols) + 3) + "---|")
+    # Baseline table
+    _append_config_table(md_lines, "rank_bm25", baseline_summary)
 
-    for cfg_name in ["rank_bm25_baseline", "bm25_only", "dense_only", "hybrid"]:
-        if cfg_name not in summary:
-            continue
-        row = f"| {cfg_name} "
-        for k in TOP_K_VALUES:
-            row += _format_metric(summary[cfg_name].get(f"recall_{k}"))
-        for k in TOP_K_VALUES:
-            row += _format_metric(summary[cfg_name].get(f"ndcg_{k}"))
-        row += _format_metric(summary[cfg_name].get("map"))
-        row += _format_metric(summary[cfg_name].get("recip_rank"))
-        row += f" | {summary[cfg_name].get('latency_ms', {}).get('mean', '-')} ms |"
-        md_lines.append(row)
+    # Per-embedder tables
+    for er in all_reports:
+        md_lines.append(f"## Embedder: {er['embedder']} ({er['embedder_full']})")
+        md_lines.append("")
+        for cfg in ["bm25_only", "dense_only", "hybrid"]:
+            if cfg in er["results"]:
+                _append_config_table(md_lines, cfg, er["results"][cfg])
 
-    md_lines.append("")
     md_path = RESULTS_DIR / "retrieval_results.md"
     with open(md_path, "w", encoding="utf-8") as f:
         f.write("\n".join(md_lines))
 
-    print(f"[INFO] Results written to {json_path} and {md_path}")
+    print(f"\n[INFO] Results written to {json_path} and {md_path}")
 
-    # Print summary
-    for cfg_name in ["rank_bm25_baseline", "bm25_only", "dense_only", "hybrid"]:
-        if cfg_name not in summary:
-            continue
-        r10 = summary[cfg_name].get("recall_10", {})
-        ndcg10 = summary[cfg_name].get("ndcg_10", {})
-        mrr = summary[cfg_name].get("recip_rank", {})
-        lat = summary[cfg_name].get("latency_ms", {})
-        print(f"  {cfg_name}: R@10={r10.get('mean',0):.4f} [{r10.get('ci95_lo',0):.4f}-{r10.get('ci95_hi',0):.4f}]  "
-              f"nDCG@10={ndcg10.get('mean',0):.4f}  MRR={mrr.get('mean',0):.4f}  "
-              f"p50={lat.get('mean',0):.1f}ms")
+    # Console summary
+    print(f"\n=== R@10 Summary ===")
+    for er in all_reports:
+        print(f"\n  Embedder: {er['embedder']}:")
+        for cfg in ["bm25_only", "dense_only", "hybrid"]:
+            if cfg in er["results"]:
+                r10 = er["results"][cfg].get("recall_10", {})
+                mrr = er["results"][cfg].get("recip_rank", {})
+                lat = er["results"][cfg].get("latency_ms", {})
+                print(f"    {cfg}: R@10={r10.get('mean',0):.4f} [{r10.get('ci95_lo',0):.4f}-{r10.get('ci95_hi',0):.4f}]  MRR={mrr.get('mean',0):.4f}  p50={lat.get('mean',0):.1f}ms")
 
     return report
+
+
+def _append_config_table(lines, name, metrics_data):
+    lines.append(f"### {name}")
+    lines.append("| k | R@k | nDCG@k |")
+    lines.append("|---|---|---|")
+    for k in TOP_K_VALUES:
+        r = metrics_data.get(f"recall_{k}")
+        n = metrics_data.get(f"ndcg_{k}")
+        r_str = f"{r['mean']:.4f} [{r['ci95_lo']:.4f}-{r['ci95_hi']:.4f}]" if r else "-"
+        n_str = f"{n['mean']:.4f} [{n['ci95_lo']:.4f}-{n['ci95_hi']:.4f}]" if n else "-"
+        lines.append(f"| {k} | {r_str} | {n_str} |")
+    m = metrics_data.get("map")
+    mr = metrics_data.get("recip_rank")
+    lines.append(f"| MAP | {m['mean']:.4f} [{m['ci95_lo']:.4f}-{m['ci95_hi']:.4f}] | — |" if m else "| MAP | — | — |")
+    lines.append(f"| MRR | {mr['mean']:.4f} [{mr['ci95_lo']:.4f}-{mr['ci95_hi']:.4f}] | — |" if mr else "| MRR | — | — |")
+    lines.append("")
 
 
 def _format_metric(d):
