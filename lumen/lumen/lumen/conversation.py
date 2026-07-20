@@ -287,7 +287,9 @@ class ConversationMemory:
             if logger:
                 logger.info("vm_weights_learned", user_id=user_id, weights=new_weights)
             return new_weights
-        except Exception:
+        except Exception as exc:
+            if logger:
+                logger.warning("vm_weights_learn_failed", user_id=user_id, error=str(exc))
             return DEFAULT_WEIGHTS.copy()
 
     def close(self) -> None:

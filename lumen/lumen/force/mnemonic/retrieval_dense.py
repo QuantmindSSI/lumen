@@ -47,8 +47,9 @@ class SqliteVecBackend:
             self.conn.enable_load_extension(True)
             sqlite_vec.load(self.conn)
             self._has_sqlite_vec = True
-        except Exception:
-            pass
+        except Exception as exc:
+            if logger:
+                logger.debug("sqlite_vec_load_failed", error=str(exc))
 
         # Always maintain vec_fallback as a direct blob-access mirror
         conn.execute("""
@@ -163,8 +164,9 @@ class USearchBackend:
     def remove(self, chunk_id: int) -> None:
         try:
             self.index.remove(chunk_id)
-        except Exception:
-            pass
+        except Exception as exc:
+            if logger:
+                logger.debug("usearch_remove_failed", chunk_id=chunk_id, error=str(exc))
 
     def degrade(self, chunk_id: int, new_resolution: str) -> None:
         self.remove(chunk_id)

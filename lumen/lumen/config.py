@@ -5,16 +5,42 @@ Output wire: EVERY other task
 Secret sauce: Device-specific defaults (RPi5 vs Jetson vs generic)
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def _default_config_path() -> Path:
+    return Path.home() / ".lumen" / "config.toml"
+
+
+def _default_store_path() -> Path:
+    return Path.home() / ".lumen" / "store"
+
+
+def _default_model_path() -> Path:
+    return Path.home() / ".lumen" / "models"
+
+
+def _default_cache_path() -> Path:
+    return Path.home() / ".lumen" / "cache"
+
+
+DEVICE_PROFILES: dict[str, dict[str, object]] = {
+    "rpi5": {"context_budget": 1024, "memory_limit_mb": 256, "vector_index": "sqlite-vec"},
+    "jetson-orin": {"context_budget": 2048, "memory_limit_mb": 512, "vector_index": "usearch"},
+    "orange-pi": {"context_budget": 1024, "memory_limit_mb": 256, "vector_index": "sqlite-vec"},
+    "generic": {"context_budget": 2048, "memory_limit_mb": 512, "vector_index": "sqlite-vec"},
+}
+
+
 class LumenConfig(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="LUMEN_",
-        toml_file=[".lumen/config.toml", "~/.lumen/config.toml"],
+        toml_file=_default_config_path(),
     )
 
     device: Literal["rpi5", "jetson-orin", "orange-pi", "generic"] = "generic"
@@ -38,6 +64,13 @@ class LumenConfig(BaseSettings):
     cache_path: Path = Path.home() / ".lumen" / "cache"
     sovereign: bool = True
     log_level: str = "info"
+    api_host: str = "0.0.0.0"
+    api_port: int = 8848
+    api_key: str | None = None
+    api_rate_limit: str = "60/minute"
+    allowed_origins: str = "*"
+    request_max_size_bytes: int = 1_048_576
+    release_threshold: float = 0.05
 
     @property
     def db_uri(self) -> str:
@@ -47,17 +80,8 @@ class LumenConfig(BaseSettings):
     def db_path(self) -> Path:
         return self.store_path / "lumen.db"
 
-    def model_post_init(self, __context):
-        device_profiles = {
-            "rpi5": {"context_budget": 1024, "memory_limit_mb": 256, "vector_index": "sqlite-vec"},
-            "jetson-orin": {"context_budget": 2048, "memory_limit_mb": 512, "vector_index": "usearch"},
-            "orange-pi": {"context_budget": 1024, "memory_limit_mb": 256, "vector_index": "sqlite-vec"},
-            "generic": {"context_budget": 2048, "memory_limit_mb": 512, "vector_index": "sqlite-vec"},
-        }
-        profile = device_profiles.get(self.device, device_profiles["generic"])
-        if self.context_budget == 2048 and self.device != "generic":
-            self.context_budget = profile["context_budget"]
-        if self.memory_limit_mb == 300 and self.device != "generic":
-            self.memory_limit_mb = profile["memory_limit_mb"]
-        if self.vector_index == "sqlite-vec" and self.device != "generic":
-            self.vector_index = profile["vector_index"]
+    def resolve_device_defaults(self) -> None:
+        profile = DEVICE_PROFILES.get(self.device, DEVICE_PROFILES["generic"])
+        self.context_budget = int(profile.get("context_budget", self.context_budget))
+        self.memory_limit_mb = int(profile.get("memory_limit_mb", self.memory_limit_mb))
+        self.vector_index = str(profile.get("vector_index", self.vector_index))

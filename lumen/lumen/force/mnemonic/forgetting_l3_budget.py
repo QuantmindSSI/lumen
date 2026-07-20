@@ -38,8 +38,9 @@ def budget_curated_eviction(conn: sqlite3.Connection, config, target_ram_mb: flo
         try:
             proc = psutil.Process()
             rss_mb = proc.memory_info().rss / (1024 * 1024)
-        except Exception:
-            pass
+        except Exception as exc:
+            if logger:
+                logger.debug("psutil_rss_failed", error=str(exc))
 
     if rss_mb < target_ram_mb:
         return 0
@@ -102,8 +103,9 @@ def budget_curated_eviction(conn: sqlite3.Connection, config, target_ram_mb: flo
                 conn.execute("DELETE FROM vec_fallback WHERE chunk_id = ?", (chunk_id,))
                 with contextlib.suppress(Exception):
                     conn.execute("DELETE FROM vec_chunks WHERE chunk_id = ?", (chunk_id,))
-            except Exception:
-                pass
+            except Exception as exc:
+                if logger:
+                    logger.debug("budget_evict_vec_delete", chunk_id=chunk_id, error=str(exc))
             evicted += 1
 
     if logger:

@@ -4,19 +4,31 @@ Endpoints:
   POST /search    — semantic + lexical hybrid search
   POST /store     — store a memory chunk
   POST /feedback  — log explicit or implicit feedback
+  POST /assemble  — retrieve + assemble context in one call
+  POST /turn      — store full conversation turn
   GET  /health    — liveness probe
   GET  /status    — palace overview
 """
 
 from __future__ import annotations
 
+import os
 import sqlite3
+import time
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+import structlog
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
+from lumen.brand.errors import ModelNotAvailableError
 from lumen.config import LumenConfig
 from lumen.data.schema import ensure_schema, get_connection
 from lumen.force.contextual.embed import MockEmbedder, get_embedder
@@ -25,16 +37,100 @@ from lumen.lumen.conversation import ConversationMemory
 from lumen.lumen.fusion import RetrievedChunk
 from lumen.lumen.search import SearchPipeline
 
-app = FastAPI(title="Lumen Memory API", version="0.1.0")
+logger = structlog.get_logger()
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+_config = LumenConfig()
+_config.store_path.mkdir(parents=True, exist_ok=True)
+_config.model_path.mkdir(parents=True, exist_ok=True)
+_config.resolve_device_defaults()
+
+limiter = Limiter(key_func=get_remote_address, default_limits=[_config.api_rate_limit])
+
+app = FastAPI(
+    title="Lumen Memory API",
+    version="0.1.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in _config.allowed_origins.split(",")],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Module-level state (single instance for pilot)
 _state: dict = {}
 
 
+# ---------------------------------------------------------------------------
+# Auth middleware
+# ---------------------------------------------------------------------------
+async def _auth_middleware(request: Request, call_next):
+    if _config.api_key and request.url.path not in ("/health", "/docs", "/redoc", "/openapi.json"):
+        provided = request.headers.get("X-API-Key") or request.query_params.get("api_key")
+        if provided != _config.api_key:
+            return JSONResponse(
+                status_code=401, content={"detail": "Invalid or missing API key"}
+            )
+    request_id = str(uuid.uuid4())[:8]
+    request.state.request_id = request_id
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
+app.middleware("http")(_auth_middleware)
+
+
+class _SizeLimitMiddleware:
+    def __init__(self, app, max_bytes: int = 1_048_576):
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            content_length = 0
+            for name, value in scope.get("headers", []):
+                if name == b"content-length":
+                    content_length = int(value)
+                    break
+            if content_length > self.max_bytes:
+                async def _send_413(msg):
+                    if msg["type"] == "http.response.start":
+                        msg["status"] = 413
+                        await send(msg)
+                await send({
+                    "type": "http.response.start",
+                    "status": 413,
+                    "headers": [(b"content-type", b"application/json")],
+                })
+                await send({
+                    "type": "http.response.body",
+                    "body": b'{"detail":"Request body too large"}',
+                })
+                return
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(_SizeLimitMiddleware, max_bytes=_config.request_max_size_bytes)
+
+
+# ---------------------------------------------------------------------------
+# Request/response models
+# ---------------------------------------------------------------------------
+
 class SearchRequest(BaseModel):
-    query: str = Field(..., min_length=1, description="Search query string")
+    query: str = Field(..., min_length=1, max_length=2000, description="Search query string")
     top_k: int = Field(5, ge=1, le=50)
-    room_hint: str | None = Field(None, description="Optional room to bias search toward")
 
 
 class SearchResponse(BaseModel):
@@ -44,9 +140,9 @@ class SearchResponse(BaseModel):
 
 
 class StoreRequest(BaseModel):
-    content: str = Field(..., min_length=1)
-    room: str = Field(..., min_length=1)
-    locus: str | None = None
+    content: str = Field(..., min_length=1, max_length=50000)
+    room: str = Field(..., min_length=1, max_length=128)
+    locus: str | None = Field(None, max_length=128)
     source_type: str = Field("user_input", pattern="^(user_input|agent_reasoning|consolidation|import|p2p_share)$")
 
 
@@ -73,101 +169,143 @@ class StatusResponse(BaseModel):
     embedding_model_available: bool
 
 
+class TurnRequest(BaseModel):
+    user_msg: str = Field(..., min_length=1, max_length=50000)
+    assistant_msg: str = Field(..., min_length=1, max_length=50000)
+    room: str = Field("conversations", max_length=128)
+    retrieved_chunk_ids: list[int] = Field(default_factory=list, max_length=100)
+
+
+class TurnResponse(BaseModel):
+    user_chunk_id: int
+    assistant_chunk_id: int
+    room: str
+    feedback_logged_for: list[int]
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
 def _get_config() -> LumenConfig:
-    return _state.get("config", LumenConfig())
+    return _state.get("config", _config)
 
 
-def _get_conn() -> sqlite3.Connection:
+def _get_conn() -> sqlite3.Connection | None:
     return _state.get("conn")
 
 
-def _get_pipeline() -> SearchPipeline:
+def _get_pipeline() -> SearchPipeline | None:
     return _state.get("pipeline")
 
 
-def _get_conversation_memory() -> ConversationMemory:
+def _get_conversation_memory() -> ConversationMemory | None:
     return _state.get("conversation")
 
 
+# ---------------------------------------------------------------------------
+# Lifespan
+# ---------------------------------------------------------------------------
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup: ensure schema and shared resources.
-
-    If *_state* already contains a connection (e.g. tests injected it),
-    skip re-initialisation.
-    """
     if _state.get("conn") is not None:
         yield
         return
 
-    config = LumenConfig()
-    config.store_path.mkdir(parents=True, exist_ok=True)
-    config.model_path.mkdir(parents=True, exist_ok=True)
-    conn = get_connection(config)
+    conn = get_connection(_config)
     ensure_schema(conn)
 
     embedder = None
+    embedding_model_available = False
     try:
-        embedder = get_embedder(config, allow_mock=False)
-    except Exception:
-        embedder = MockEmbedder(dims=config.embedding_dims)
+        embedder = get_embedder(_config, allow_mock=False)
+        embedding_model_available = True
+        logger.info("embedder_ready", model=_config.embedding_model)
+    except ModelNotAvailableError as exc:
+        logger.warning("embedder_fallback", reason=str(exc))
+        embedder = MockEmbedder(dims=_config.embedding_dims)
 
-    pipeline = SearchPipeline(conn, config, embedder=embedder)
-    conversation = ConversationMemory(config=config, conn=conn, embedder=embedder)
+    pipeline = SearchPipeline(conn, _config, embedder=embedder)
+    conversation = ConversationMemory(config=_config, conn=conn, embedder=embedder)
     tfc = TwinForceController()
 
     _state.update({
-        "config": config,
+        "config": _config,
         "conn": conn,
         "pipeline": pipeline,
         "conversation": conversation,
         "tfc": tfc,
         "embedder": embedder,
+        "embedding_model_available": embedding_model_available,
     })
+    logger.info("server_started", device=_config.device, model_available=embedding_model_available)
     yield
     conn.close()
+    logger.info("server_stopped")
 
 
 app.router.lifespan_context = lifespan
 
 
+# ---------------------------------------------------------------------------
+# Error handler
+# ---------------------------------------------------------------------------
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    request_id = getattr(request.state, "request_id", "unknown")
+    logger.error("unhandled_error", request_id=request_id, error=str(exc), path=request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "request_id": request_id},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
 @app.get("/health")
 async def health() -> dict:
     conn = _get_conn()
+    if conn is None:
+        raise HTTPException(status_code=503, detail="Database not initialised")
     try:
         conn.execute("SELECT 1")
         return {"status": "ok"}
     except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"DB unreachable: {exc}") from exc
+        raise HTTPException(status_code=503, detail="Database unreachable") from exc
 
 
 @app.get("/status")
 async def status() -> StatusResponse:
     conn = _get_conn()
-    config = _get_config()
+    if conn is None:
+        raise HTTPException(status_code=503, detail="Database not initialised")
     room_count = conn.execute("SELECT COUNT(*) FROM room").fetchone()[0]
     chunk_count = conn.execute("SELECT COUNT(*) FROM chunk WHERE valid_to IS NULL").fetchone()[0]
     tfc = _state.get("tfc") or TwinForceController()
-    model_dir = Path(config.model_path) / config.embedding_model
     return StatusResponse(
         rooms=room_count,
         active_chunks=chunk_count,
         tfc=tfc.to_env(),
-        embedding_model_available=model_dir.exists(),
+        embedding_model_available=_state.get("embedding_model_available", False),
     )
 
 
 @app.post("/search")
-async def search(req: SearchRequest) -> SearchResponse:
-    import time
+@limiter.limit(_config.api_rate_limit)
+async def search(request: Request, req: SearchRequest) -> SearchResponse:
     t0 = time.perf_counter()
     pipeline = _get_pipeline()
+    if pipeline is None:
+        raise HTTPException(status_code=503, detail="Search pipeline not initialised")
     results = pipeline.execute(req.query, k=req.top_k)
     latency_ms = (time.perf_counter() - t0) * 1000
 
-    serialised = []
-    for rc in results[: req.top_k]:
-        serialised.append({
+    serialised = [
+        {
             "chunk_id": rc.chunk_id,
             "room": rc.room_name,
             "locus": rc.locus_name,
@@ -175,17 +313,22 @@ async def search(req: SearchRequest) -> SearchResponse:
             "score": round(rc.final_score, 4),
             "vm_score": round(rc.vm_score, 4),
             "provenance_id": rc.provenance_id,
-        })
-
+        }
+        for rc in results[:req.top_k]
+    ]
+    logger.info("search_completed", query=req.query[:100], results=len(serialised), latency_ms=round(latency_ms, 2))
     return SearchResponse(query=req.query, results=serialised, latency_ms=round(latency_ms, 2))
 
 
 @app.post("/store")
-async def store(req: StoreRequest) -> StoreResponse:
+@limiter.limit(_config.api_rate_limit)
+async def store(request: Request, req: StoreRequest) -> StoreResponse:
     from lumen.force.mnemonic.store import store_memory
 
     config = _get_config()
     conn = _get_conn()
+    if conn is None:
+        raise HTTPException(status_code=503, detail="Database not initialised")
     embedder = _state.get("embedder")
     embedding = embedder.encode_single(req.content) if embedder is not None else None
 
@@ -202,8 +345,11 @@ async def store(req: StoreRequest) -> StoreResponse:
 
 
 @app.post("/feedback")
-async def feedback(req: FeedbackRequest) -> FeedbackResponse:
+@limiter.limit(_config.api_rate_limit)
+async def feedback(request: Request, req: FeedbackRequest) -> FeedbackResponse:
     conversation = _get_conversation_memory()
+    if conversation is None:
+        raise HTTPException(status_code=503, detail="Conversation memory not initialised")
     conversation.log_explicit_feedback(
         chunk_id=req.chunk_id,
         was_useful=req.was_useful,
@@ -214,11 +360,12 @@ async def feedback(req: FeedbackRequest) -> FeedbackResponse:
 
 
 @app.post("/assemble")
-async def assemble(req: SearchRequest) -> dict:
-    """Retrieve + assemble context in one call."""
-    import time
+@limiter.limit(_config.api_rate_limit)
+async def assemble(request: Request, req: SearchRequest) -> dict:
     t0 = time.perf_counter()
     conversation = _get_conversation_memory()
+    if conversation is None:
+        raise HTTPException(status_code=503, detail="Conversation memory not initialised")
     turn = conversation.retrieve_and_assemble(req.query, top_k=req.top_k)
     latency_ms = (time.perf_counter() - t0) * 1000
     return {
@@ -230,33 +377,19 @@ async def assemble(req: SearchRequest) -> dict:
 
 
 @app.post("/turn")
-async def turn(req: dict) -> dict:
-    """Store a full conversation turn.
-
-    Expected body::
-
-        {
-          "user_msg": "...",
-          "assistant_msg": "...",
-          "room": "conversations",
-          "retrieved_chunk_ids": [1, 2, 3]
-        }
-    """
-    user_msg = req.get("user_msg", "")
-    assistant_msg = req.get("assistant_msg", "")
-    room = req.get("room", "conversations")
-    chunk_ids = req.get("retrieved_chunk_ids", [])
-
-    if not user_msg or not assistant_msg:
-        raise HTTPException(status_code=422, detail="user_msg and assistant_msg are required")
-
+@limiter.limit(_config.api_rate_limit)
+async def turn(request: Request, req: TurnRequest) -> TurnResponse:
     conversation = _get_conversation_memory()
-    # Reconstruct RetrievedChunk stubs for feedback logging
-    stubs = []
+    if conversation is None:
+        raise HTTPException(status_code=503, detail="Conversation memory not initialised")
     conn = _get_conn()
-    for cid in chunk_ids:
+    if conn is None:
+        raise HTTPException(status_code=503, detail="Database not initialised")
+
+    stubs = []
+    for cid in req.retrieved_chunk_ids:
         row = conn.execute(
-            "SELECT room_id, locus_id, content FROM chunk WHERE chunk_id = ?", (cid,)
+            "SELECT content FROM chunk WHERE chunk_id = ?", (cid,)
         ).fetchone()
         if row:
             stubs.append(
@@ -275,23 +408,27 @@ async def turn(req: dict) -> dict:
             )
 
     user_id, assistant_id = conversation.store_turn(
-        user_msg=user_msg,
-        assistant_msg=assistant_msg,
+        user_msg=req.user_msg,
+        assistant_msg=req.assistant_msg,
         retrieved_chunks=stubs,
-        room_name=room,
+        room_name=req.room,
     )
-    return {
-        "user_chunk_id": user_id,
-        "assistant_chunk_id": assistant_id,
-        "room": room,
-        "feedback_logged_for": chunk_ids,
-    }
+    return TurnResponse(
+        user_chunk_id=user_id,
+        assistant_chunk_id=assistant_id,
+        room=req.room,
+        feedback_logged_for=req.retrieved_chunk_ids,
+    )
 
 
 def main() -> None:
-    """CLI entrypoint for ``uvicorn lumen.api.server:app``."""
+    """CLI entrypoint for production server."""
     import uvicorn
-    uvicorn.run("lumen.api.server:app", host="0.0.0.0", port=8848, log_level="info")
+
+    host = os.environ.get("LUMEN_API_HOST", _config.api_host)
+    port = int(os.environ.get("LUMEN_API_PORT", str(_config.api_port)))
+    log_level = os.environ.get("LUMEN_LOG_LEVEL", _config.log_level)
+    uvicorn.run("lumen.api.server:app", host=host, port=port, log_level=log_level)
 
 
 if __name__ == "__main__":

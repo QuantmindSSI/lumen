@@ -92,7 +92,9 @@ def fuse_and_rerank(
                     from lumen.sovereign.frqad import compute_frqad
                     frqad = compute_frqad(query_vec, cand_vec, res or "FP32")
                     frqad_sim = 1.0 - (frqad / (np.pi / 2))
-                except Exception:
+                except Exception as exc:
+                    if logger:
+                        logger.debug("frqad_fallback_to_cosine", error=str(exc))
                     from scipy.spatial.distance import cosine
                     frqad_sim = 1.0 - cosine(query_vec, cand_vec)
             else:
@@ -138,6 +140,7 @@ def _get_embedding(conn: sqlite3.Connection, chunk_id: int) -> np.ndarray | None
         ).fetchone()
         if row2 and row2[0]:
             return np.frombuffer(row2[0], dtype=np.float32)
-    except Exception:
-        pass
+    except Exception as exc:
+        if logger:
+            logger.debug("vec_chunks_embedding_fetch_failed", chunk_id=chunk_id, error=str(exc))
     return None

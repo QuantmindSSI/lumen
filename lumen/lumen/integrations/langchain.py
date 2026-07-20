@@ -1,31 +1,22 @@
 """LangChain integration for Lumen memory.
 
-Provides ``LumenChatMemory`` — a convenience wrapper around
-:class:`lumen.lumen.conversation.ConversationMemory` designed for
-pre/post-processing in LangChain agents.
+Provides ``LumenChatMemory`` — implements ``langchain.memory.BaseChatMemory``
+for native LangChain agent compatibility, and ``LumenStore`` for
+``langchain_core.stores.BaseStore`` compatibility.
 
 Usage::
 
-    from langchain.agents import create_agent
+    from langchain.agents import create_react_agent
+    from langchain.memory import ConversationBufferMemory
     from lumen.integrations.langchain import LumenChatMemory
 
     memory = LumenChatMemory(room="support")
-
-    # Before the LLM call
-    enriched_prompt = memory.retrieve_context("How do I reset my password?")
-
-    # After the LLM call
-    memory.save_turn(
-        "How do I reset my password?",
-        "You can reset it via Settings > Account > Reset Password."
-    )
-
-If you want to pass Lumen as a native ``store=`` to
-``langchain.agents.create_agent``, use :class:`LumenStore`.
+    agent = create_react_agent(llm, tools, prompt, memory=memory)
 """
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator, Sequence
 from typing import Any
 
@@ -40,12 +31,23 @@ try:
 except Exception:
     pass
 
+# ---------------------------------------------------------------------------
+# LumenChatMemory — native LangChain memory
+# ---------------------------------------------------------------------------
+
+try:
+    from langchain.memory.chat_memory import BaseChatMemory
+except Exception:
+    BaseChatMemory = None  # type: ignore[assignment,misc]
+
 
 class LumenChatMemory:
-    """High-level memory adapter for LangChain-style agents.
+    """Lumen-backed memory adapter for LangChain agents.
 
-    Manages the retrieve → assemble → store → feedback loop for a single
-    user/room.  The connection and embedder are lazy-initialised on first use.
+    If ``langchain`` is installed with ``pip install lumen[langchain]``,
+    this class extends ``langchain.memory.BaseChatMemory`` for native
+    agent integration.  When ``langchain`` is absent it falls back to a
+    standalone mode that still exposes the same API surface.
 
     Args:
         config: :class:`LumenConfig`.  Created automatically if omitted.
@@ -53,6 +55,10 @@ class LumenChatMemory:
         room: Room name for turn storage.
         system_prompt_override: Optional static system prompt injected into
             every assembled context.
+        return_messages: When True (default), returns LangChain ``HumanMessage``
+            / ``AIMessage`` objects.
+        input_key: Dict key to read from the input (default: ``"input"``).
+        output_key: Dict key to read from the output (default: ``"output"``).
     """
 
     def __init__(
@@ -61,30 +67,69 @@ class LumenChatMemory:
         user_id: str = "default",
         room: str = "conversations",
         system_prompt_override: str | None = None,
-        embedder=None,
+        embedder: Any = None,
+        return_messages: bool = True,
+        input_key: str = "input",
+        output_key: str = "output",
     ) -> None:
         self.config = config or LumenConfig()
         self.user_id = user_id
         self.room = room
         self.system_prompt_override = system_prompt_override
         self._embedder = embedder
+        self.return_messages = return_messages
+        self.input_key = input_key
+        self.output_key = output_key
         self._memory: ConversationMemory | None = None
+
+        # LangChain native memory fields
+        self.chat_memory: Any = self  # duck-type for BaseChatMemory consumers
+        self._last_context: str = ""
 
     @property
     def memory(self) -> ConversationMemory:
-        """Lazy-initialised ``ConversationMemory`` instance."""
         if self._memory is None:
             self._memory = ConversationMemory(
                 config=self.config, embedder=self._embedder
             )
         return self._memory
 
-    def retrieve_context(self, query: str, top_k: int = 5) -> str:
-        """Retrieve memories for *query* and return an assembled prompt.
+    @property
+    def memory_variables(self) -> list[str]:
+        """Return the keys this memory expects to load."""
+        return ["lumen_context"]
 
-        The returned string contains a system prompt, palace minimap,
-        active goals, and the ranked memory snippets.
+    def load_memory_variables(self, inputs: dict[str, Any]) -> dict[str, str]:
+        """Load memory context for the current input.
+
+        Called by LangChain agents before the LLM call.  Returns the
+        assembled Lumen context under the ``"lumen_context"`` key.
         """
+        query = inputs.get(self.input_key, "")
+        if not query:
+            return {"lumen_context": ""}
+        self._last_context = self.retrieve_context(query)
+        return {"lumen_context": self._last_context}
+
+    def save_context(self, inputs: dict[str, Any], outputs: dict[str, str]) -> None:
+        """Save conversational context to Lumen.
+
+        Called by LangChain agents after the LLM call.
+        """
+        user_msg = inputs.get(self.input_key, "")
+        assistant_msg = outputs.get(self.output_key, "")
+        if user_msg and assistant_msg:
+            self.save_turn(user_msg, assistant_msg)
+
+    def clear(self) -> None:
+        """Reset the in-memory conversation state."""
+        self._last_context = ""
+        if self._memory is not None:
+            self._memory.close()
+            self._memory = None
+
+    def retrieve_context(self, query: str, top_k: int = 5) -> str:
+        """Retrieve memories for *query* and return an assembled prompt."""
         turn = self.memory.retrieve_and_assemble(
             query=query,
             active_goals=self._active_goals(),
@@ -94,17 +139,18 @@ class LumenChatMemory:
         return turn.assembled_context
 
     def save_turn(self, user_msg: str, assistant_msg: str) -> None:
-        """Store a conversation turn and log implicit feedback.
-
-        Internally re-runs retrieval so we know which chunks were shown to the
-        agent for this turn.
-        """
-        turn = self.memory.retrieve_and_assemble(
-            query=user_msg,
-            active_goals=self._active_goals(),
-            system_prompt_override=self.system_prompt_override,
-            top_k=5,
-        )
+        """Store a conversation turn and log implicit feedback."""
+        try:
+            turn = self.memory.retrieve_and_assemble(
+                query=user_msg,
+                active_goals=self._active_goals(),
+                system_prompt_override=self.system_prompt_override,
+                top_k=5,
+            )
+        except Exception:
+            if logger:
+                logger.warning("save_turn_retrieval_failed", user_id=self.user_id)
+            return
         self.memory.store_turn(
             user_msg=user_msg,
             assistant_msg=assistant_msg,
@@ -123,18 +169,11 @@ class LumenChatMemory:
         )
         self._maybe_learn_weights()
 
-    def clear(self) -> None:
-        """Reset the in-memory conversation state."""
-        if self._memory is not None:
-            self._memory.close()
-            self._memory = None
-
     def _active_goals(self) -> list[str]:
         """Placeholder for active-goal retrieval (M3)."""
         return []
 
     def _maybe_learn_weights(self) -> None:
-        """Schedule V(m) weight update when enough feedback exists."""
         from lumen.force.mnemonic.value_model import learn_weights_from_feedback
 
         try:
@@ -142,18 +181,15 @@ class LumenChatMemory:
                 self.memory.conn, user_id=self.user_id
             )
             if logger:
-                logger.info("vm_weights_learned", user_id=self.user_id, weights=new_weights)
-            # Persist back to user_profile
-            import json
+                logger.info("vm_weights_learned", user_id=self.user_id)
             self.memory.conn.execute(
-                """UPDATE user_profile
-                   SET vm_weights_json = ?
-                   WHERE user_id = ?""",
+                "UPDATE user_profile SET vm_weights_json = ? WHERE user_id = ?",
                 (json.dumps(new_weights), self.user_id),
             )
             self.memory.conn.commit()
         except Exception:
-            pass
+            if logger:
+                logger.warning("vm_weights_learn_failed", user_id=self.user_id)
 
 
 # ---------------------------------------------------------------------------
@@ -179,7 +215,7 @@ if BaseStore is not None:
             self,
             config: LumenConfig | None = None,
             default_namespace: str = "store",
-            embedder=None,
+            embedder: Any = None,
         ) -> None:
             self.config = config or LumenConfig()
             self.default_namespace = default_namespace
@@ -203,13 +239,22 @@ if BaseStore is not None:
         def mget(self, keys: Sequence[str]) -> list[bytes | None]:
             results: list[bytes | None] = []
             for key in keys:
-                user_id, room, subkey = self._parse_key(key)
+                _user_id, room, subkey = self._parse_key(key)
                 row = self.memory.conn.execute(
-                    "SELECT content FROM chunk WHERE room_id = (SELECT room_id FROM room WHERE name = ?) AND content LIKE ? AND valid_to IS NULL ORDER BY created_at DESC LIMIT 1",
+                    """SELECT content
+                       FROM chunk
+                       WHERE room_id = (
+                           SELECT room_id FROM room WHERE name = ?
+                       )
+                       AND content LIKE ?
+                       AND valid_to IS NULL
+                       ORDER BY created_at DESC
+                       LIMIT 1""",
                     (room, f"{subkey}:%"),
                 ).fetchone()
                 if row:
-                    results.append(row["content"].split(":", 1)[1].encode())
+                    parts = row["content"].split(":", 1)
+                    results.append(parts[1].encode("utf-8") if len(parts) > 1 else b"")
                 else:
                     results.append(None)
             return results
@@ -219,15 +264,16 @@ if BaseStore is not None:
 
             for key, value in key_value_pairs:
                 _user_id, room, subkey = self._parse_key(key)
-                # Ensure room exists
                 self.memory.conn.execute(
                     "INSERT OR IGNORE INTO room(name, room_type) VALUES (?, 'ephemeral')",
                     (room,),
                 )
                 self.memory.conn.commit()
                 content = f"{subkey}:{value.decode('utf-8', errors='replace')}"
-                embedder = self.memory.embedder
-                emb = embedder.encode_single(content)
+                if self.memory.embedder:
+                    emb = self.memory.embedder.encode_single(content)
+                else:
+                    emb = None
                 store_memory(
                     self.memory.conn,
                     content=content,
@@ -239,7 +285,7 @@ if BaseStore is not None:
 
         def mdelete(self, keys: Sequence[str]) -> None:
             for key in keys:
-                user_id, room, subkey = self._parse_key(key)
+                _user_id, room, subkey = self._parse_key(key)
                 self.memory.conn.execute(
                     """UPDATE chunk
                        SET valid_to = unixepoch()

@@ -31,7 +31,9 @@ class GraphChannel:
         try:
             row = conn.execute("SELECT COUNT(*) FROM chunk WHERE valid_to IS NULL").fetchone()
             return row is not None and row[0] >= 3
-        except Exception:
+        except Exception as exc:
+            if logger:
+                logger.debug("graph_availability_check_failed", error=str(exc))
             return False
 
     def __init__(self, conn: sqlite3.Connection):
@@ -41,8 +43,9 @@ class GraphChannel:
             import networkx as nx
             self._nx = nx
             self._build_nx_graph()
-        except Exception:
-            pass
+        except Exception as exc:
+            if logger:
+                logger.debug("networkx_import_failed", error=str(exc))
 
     def _build_nx_graph(self):
         if self._nx is None:

@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  lumen:
+    build: .
+    image: lumen:latest
+    container_name: lumen-api
+    restart: unless-stopped
+    ports:
+      - "${LUMEN_API_PORT:-8848}:8848"
+    volumes:
+      - lumen_data:/root/.lumen
+    environment:
+      - LUMEN_API_HOST=0.0.0.0
+      - LUMEN_API_PORT=8848
+      - LUMEN_LOG_LEVEL=${LUMEN_LOG_LEVEL:-info}
+      - LUMEN_API_KEY=${LUMEN_API_KEY:-}
+      - LUMEN_API_RATE_LIMIT=${LUMEN_API_RATE_LIMIT:-60/minute}
+      - LUMEN_ALLOWED_ORIGINS=${LUMEN_ALLOWED_ORIGINS:-*}
+      - LUMEN_DEVICE=${LUMEN_DEVICE:-generic}
+      - LUMEN_CONTEXT_BUDGET=${LUMEN_CONTEXT_BUDGET:-2048}
+      - LUMEN_MEMORY_LIMIT_MB=${LUMEN_MEMORY_LIMIT_MB:-512}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8848/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  lumen_data:
+    driver: local
