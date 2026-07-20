@@ -6,10 +6,10 @@ Secret sauce: User-specific decay rate (D16 user_profile.ebbinghaus_half_life_da
 """
 
 import math
-from datetime import datetime, timezone
-from typing import Optional
-
 import sqlite3
+from datetime import datetime, timezone
+
+from lumen.sovereign.wear import WearAwareBatcher
 
 logger = None
 try:
@@ -22,7 +22,8 @@ except Exception:
 def ebbinghaus_decay(
     conn: sqlite3.Connection,
     user_half_life_days: float = 7.0,
-    now: Optional[datetime] = None,
+    now: datetime | None = None,
+    batcher: WearAwareBatcher | None = None,
 ) -> int:
     """
     R(t) = e^(-t / (h * ln(2))) where h = user-specific half-life in days.
@@ -57,7 +58,11 @@ def ebbinghaus_decay(
             released += 1
         updates.append((new_vm, chunk_id))
 
-    conn.executemany("UPDATE chunk SET vm_score = ? WHERE chunk_id = ?", updates)
+    if batcher:
+        for new_vm, chunk_id in updates:
+            batcher.queue.append(("UPDATE chunk SET vm_score = ? WHERE chunk_id = ?", (new_vm, chunk_id)))
+    else:
+        conn.executemany("UPDATE chunk SET vm_score = ? WHERE chunk_id = ?", updates)
     if logger:
         logger.info("decay_applied", chunks=len(updates), released=released,
                     half_life_days=user_half_life_days)

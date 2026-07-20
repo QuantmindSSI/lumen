@@ -7,11 +7,14 @@ Secret sauce: Palace-aware placement + V(m) scoring + interference check on writ
 
 import hashlib
 import json
+import sqlite3
 import uuid
-from typing import Optional
 
 import numpy as np
-import sqlite3
+
+from lumen.force.mnemonic.provenance import create_provenance
+from lumen.force.mnemonic.value_model import compute_vm
+from lumen.sovereign.wear import WearAwareBatcher
 
 logger = None
 try:
@@ -19,10 +22,6 @@ try:
     logger = structlog.get_logger()
 except Exception:
     pass
-
-from lumen.brand.errors import PalaceError
-from lumen.force.mnemonic.provenance import create_provenance
-from lumen.force.mnemonic.value_model import compute_vm
 
 
 def _get_lexical_channel(conn: sqlite3.Connection):
@@ -42,16 +41,34 @@ def store_memory(
     conn: sqlite3.Connection,
     content: str,
     room_name: str,
-    locus_name: Optional[str] = None,
+    locus_name: str | None = None,
     source_type: str = "user_input",
-    source_ref: Optional[str] = None,
-    embedding: Optional[np.ndarray] = None,
-    vm_weights: Optional[dict] = None,
+    source_ref: str | None = None,
+    embedding: np.ndarray | None = None,
+    vm_weights: dict | None = None,
     config=None,
+    batcher: WearAwareBatcher | None = None,
 ) -> int:
     """
     Atomic store: schema + vector + lexical + provenance in one transaction.
+
+    ``batcher`` is accepted for API uniformity but is not used here because
+    single-store writes depend on ``lastrowid`` from chunk and provenance
+    inserts, which is incompatible with deferred SQL batching.  The batcher
+    is wired into bulk callers (consolidation, decay, eviction) where it
+    provides real SD/eMMC endurance benefits.
     """
+    # Pre-store safety scan — redact PII at the write path
+    from lumen.compliance.safety_forgetting import safety_scan_chunk
+
+    scan_hits = safety_scan_chunk(content)
+    if scan_hits:
+        if logger:
+            logger.warning("safety_scan_triggered", room=room_name, hits=scan_hits)
+        # Redact the content but still store a metadata stub
+        for hit in scan_hits:
+            content = _redact_pattern(content, hit)
+
     with conn:
         # 1. Resolve room
         row = conn.execute("SELECT room_id FROM room WHERE name = ?", (room_name,)).fetchone()
@@ -136,3 +153,19 @@ def _trigger_interference_check(conn, room_id, locus_id, new_chunk_id, embedding
     from lumen.force.mnemonic.forgetting_l2_interference import check_locus_interference
     if embedding is not None:
         check_locus_interference(conn, room_id, locus_id, new_chunk_id, embedding)
+
+
+def _redact_pattern(text: str, pattern_name: str) -> str:
+    """Simple string-level redaction for known PII patterns."""
+    import re
+
+    patterns = {
+        "email": re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"),
+        "ssn": re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
+        "phone": re.compile(r"\b\d{3}-\d{3}-\d{4}\b"),
+        "api_key": re.compile(r"[a-zA-Z0-9_-]{32,}"),
+    }
+    rx = patterns.get(pattern_name)
+    if rx is None:
+        return text
+    return rx.sub(lambda m: "[REDACTED]", text)

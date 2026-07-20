@@ -3,15 +3,13 @@
 Orchestrates: intent classify → parallel BM25 + dense retrieval → fusion → budget enforcement → TFC update
 """
 
-import time
-from typing import List
-
-import numpy as np
 import sqlite3
+import time
 
 from lumen.config import LumenConfig
-from lumen.force.contextual.embed import FallbackEmbedder
-from lumen.force.mnemonic.retrieval_dense import DenseHit, VectorChannel
+from lumen.force.contextual.embed import MockEmbedder
+from lumen.force.mnemonic.retrieval_dense import VectorChannel
+from lumen.force.mnemonic.retrieval_graph import GraphChannel
 from lumen.force.mnemonic.retrieval_lexical import LexicalChannel
 from lumen.lumen.controller import TwinForceController
 from lumen.lumen.fusion import RetrievedChunk, fuse_and_rerank
@@ -28,16 +26,24 @@ except Exception:
 class SearchPipeline:
     def __init__(self, conn: sqlite3.Connection, config: LumenConfig,
                  tfc: TwinForceController | None = None,
-                 embedder=None):
+                 embedder=None,
+                 graph: GraphChannel | None = None):
         self.conn = conn
         self.config = config
         self.tfc = tfc or TwinForceController()
         self.intent_router = IntentRouter()
         self.lexical = LexicalChannel(conn)
         self.vector = VectorChannel(config, conn)
-        self.embedder = embedder or FallbackEmbedder(dims=config.embedding_dims)
+        self.embedder = embedder or MockEmbedder(dims=config.embedding_dims)
+        self.graph = graph
 
-    def execute(self, query: str, goal_tree_keywords: List[str] | None = None) -> List[RetrievedChunk]:
+    def execute(
+        self,
+        query: str,
+        goal_tree_keywords: list[str] | None = None,
+        k: int = 20,
+        max_repair_attempts: int = 1,
+    ) -> list[RetrievedChunk]:
         start = time.perf_counter()
 
         # Stage 1: Intent classification
@@ -45,8 +51,15 @@ class SearchPipeline:
 
         # Stage 2: Parallel retrieval (sequential for simplicity, but real)
         query_vec = self.embedder.encode_single(query)
-        lexical_hits = self.lexical.search(query, k=20)
-        dense_hits = self.vector.search(query_vec, k=20)
+        lexical_hits = self.lexical.search(query, k=k)
+        dense_hits = self.vector.search(query_vec, k=k)
+
+        # Stage 2b: Graph retrieval
+        graph_hits = []
+        if self.graph is not None and dense_hits:
+            seed_ids = [hit.chunk_id for hit in dense_hits[:3]]
+            for seed in seed_ids:
+                graph_hits.extend(self.graph.traverse_from_seed(seed, hops=2))
 
         # Stage 3: Fusion & rerank
         results = fuse_and_rerank(
@@ -55,6 +68,7 @@ class SearchPipeline:
             self.conn,
             budget_candidates=200,
             query_embedding=query_vec,
+            graph_hits=graph_hits or None,
         )
 
         # Stage 4: TFC update
@@ -63,6 +77,22 @@ class SearchPipeline:
             "repetition": 0.0,
             "context_pressure": 0.0,
         })
+
+        # Stage 5: Repair loop
+        if max_repair_attempts > 0:
+            reason = None
+            if not results:
+                reason = "empty_results"
+            elif all(r.final_score < 0.01 for r in results):
+                reason = "low_confidence"
+
+            if reason:
+                from lumen.lumen.repair import SearchRepair
+
+                repair = SearchRepair(self.tfc, self)
+                repaired = repair.attempt_repair(query, reason)
+                if repaired:
+                    results = repaired
 
         elapsed_ms = (time.perf_counter() - start) * 1000
         if logger:

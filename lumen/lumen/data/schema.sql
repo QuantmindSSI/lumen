@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS chunk (
     locus_id        INTEGER REFERENCES locus(locus_id) ON DELETE SET NULL,
     room_id         INTEGER NOT NULL REFERENCES room(room_id),
     content         TEXT NOT NULL,             -- raw text / memory payload
-    content_hash    TEXT NOT NULL UNIQUE,      -- SHA-256 of content for dedup
+    content_hash    TEXT NOT NULL,             -- SHA-256 of content for dedup
     created_at      INTEGER DEFAULT (unixepoch()),
     valid_from      INTEGER DEFAULT (unixepoch()),  -- bi-temporal: Engram pattern
     valid_to        INTEGER,                        -- NULL = still valid
@@ -79,6 +79,28 @@ CREATE TABLE IF NOT EXISTS user_profile (
     value_embeddings BLOB,
     vm_weights_json TEXT,                  -- serialized 7-factor weights
     ebbinghaus_half_life_days REAL DEFAULT 7.0
+);
+
+-- C4: Goal Tree Persistence
+CREATE TABLE IF NOT EXISTS goals (
+    goal_id     INTEGER PRIMARY KEY,
+    user_id     TEXT DEFAULT 'default',
+    parent_id   INTEGER REFERENCES goals(goal_id) ON DELETE CASCADE,
+    name        TEXT NOT NULL,
+    is_active   INTEGER DEFAULT 0 CHECK(is_active IN (0,1)),
+    created_at  INTEGER DEFAULT (unixepoch()),
+    updated_at  INTEGER DEFAULT (unixepoch()),
+    UNIQUE(user_id, name)
+);
+CREATE INDEX IF NOT EXISTS idx_goals_user ON goals(user_id);
+
+-- C3: Epistemic State Persistence
+CREATE TABLE IF NOT EXISTS epistemic_state (
+    user_id             TEXT PRIMARY KEY DEFAULT 'default',
+    known_facts_json    TEXT DEFAULT '[]',
+    assumed_gaps_json   TEXT DEFAULT '[]',
+    established_truths_json TEXT DEFAULT '[]',
+    updated_at          INTEGER DEFAULT (unixepoch())
 );
 
 -- Migration tracking

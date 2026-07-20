@@ -1,0 +1,37 @@
+{
+  "benchmark": "retrieval",
+  "corpus": "synthetic",
+  "num_passages": 1000,
+  "num_queries": 50,
+  "top_k": 10,
+  "seed": 42,
+  "results": {
+    "hybrid": {
+      "recall@10_mean": 0.009,
+      "recall@10_std": 0.01,
+      "ndcg@10_mean": 0.0681,
+      "ndcg@10_std": 0.0859,
+      "latency_p50_ms": 6.16,
+      "latency_p95_ms": 9.61,
+      "latency_p99_ms": 15.22
+    },
+    "bm25_only": {
+      "recall@10_mean": 0.045,
+      "recall@10_std": 0.0687,
+      "ndcg@10_mean": 0.3,
+      "ndcg@10_std": 0.4583,
+      "latency_p50_ms": 0.35,
+      "latency_p95_ms": 0.9,
+      "latency_p99_ms": 0.98
+    },
+    "dense_only": {
+      "recall@10_mean": 0.0084,
+      "recall@10_std": 0.01,
+      "ndcg@10_mean": 0.0534,
+      "ndcg@10_std": 0.0667,
+      "latency_p50_ms": 0.99,
+      "latency_p95_ms": 1.25,
+      "latency_p99_ms": 1.34
+    }
+  }
+}

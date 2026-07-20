@@ -6,9 +6,9 @@ Secret sauce: SD/eMMC endurance optimisation
 """
 
 import asyncio
+import contextlib
 import sqlite3
 from collections import deque
-from typing import List, Tuple
 
 logger = None
 try:
@@ -27,7 +27,7 @@ class WearAwareBatcher:
     def __init__(self, conn: sqlite3.Connection, max_batch_size: int = 100,
                  max_latency_ms: float = 500):
         self.conn = conn
-        self.queue: deque[Tuple[str, tuple]] = deque()
+        self.queue: deque[tuple[str, tuple]] = deque()
         self.max_batch = max_batch_size
         self.max_latency = max_latency_ms / 1000.0
         self._lock = asyncio.Lock()
@@ -41,10 +41,8 @@ class WearAwareBatcher:
 
     async def run(self) -> None:
         while True:
-            try:
+            with contextlib.suppress(asyncio.TimeoutError):
                 await asyncio.wait_for(self._flush_event.wait(), timeout=self.max_latency)
-            except asyncio.TimeoutError:
-                pass
             await self._flush()
 
     async def _flush(self) -> None:
@@ -58,10 +56,14 @@ class WearAwareBatcher:
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, self._sync_flush, batch)
 
-    def _sync_flush(self, batch: List[Tuple[str, tuple]]) -> None:
+    def flush_sync(self, batch: list[tuple[str, tuple]]) -> None:
+        """Synchronous batch flush exposed for non-async callers (e.g. consolidation)."""
+        self._sync_flush(batch)
+
+    def _sync_flush(self, batch: list[tuple[str, tuple]]) -> None:
         with self.conn:
             for sql, params in batch:
                 self.conn.execute(sql, params)
-            self.conn.execute("PRAGMA wal_checkpoint(PASSIVE)")
+        self.conn.execute("PRAGMA wal_checkpoint(PASSIVE)")
         if logger:
             logger.debug("wear_flush", count=len(batch))

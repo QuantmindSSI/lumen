@@ -5,9 +5,10 @@ Output wire: C2 (fusion engine)
 Secret sauce: None — this is commodity BM25, but wired into the palace schema
 """
 
+import contextlib
+import re
 import sqlite3
 from dataclasses import dataclass
-from typing import List
 
 logger = None
 try:
@@ -15,6 +16,10 @@ try:
     logger = structlog.get_logger()
 except Exception:
     pass
+
+# Characters that FTS5 treats as operators/special and that commonly
+# appear in user queries (e.g. question marks, quotes, asterisks).
+_FTS5_SPECIAL_RE = re.compile(r'[?"*~^()+-]')
 
 
 @dataclass(frozen=True)
@@ -29,13 +34,21 @@ class LexicalChannel:
 
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
-        try:
+        with contextlib.suppress(Exception):
             self.conn.execute("PRAGMA optimize")
-        except Exception:
-            pass
 
-    def search(self, query: str, k: int = 20) -> List[LexicalHit]:
+    @staticmethod
+    def _sanitize(query: str) -> str:
+        """Remove characters that trigger FTS5 syntax errors."""
+        cleaned = _FTS5_SPECIAL_RE.sub(" ", query)
+        # Collapse multiple spaces
+        return " ".join(cleaned.split())
+
+    def search(self, query: str, k: int = 20) -> list[LexicalHit]:
         """FTS5 MATCH with bm25 ranking."""
+        safe_query = self._sanitize(query)
+        if not safe_query:
+            return []
         rows = self.conn.execute(
             """
             SELECT rowid, rank
@@ -44,12 +57,12 @@ class LexicalChannel:
             ORDER BY rank
             LIMIT ?
             """,
-            (query, k)
+            (safe_query, k)
         ).fetchall()
 
         hits = [LexicalHit(cid, rank, b"") for cid, rank in rows]
         if logger:
-            logger.info("lexical_retrieve", query=query, hits=len(hits),
+            logger.info("lexical_retrieve", query=safe_query, hits=len(hits),
                         top_score=hits[0].rank if hits else None)
         return hits
 

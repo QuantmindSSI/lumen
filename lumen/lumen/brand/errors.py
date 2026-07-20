@@ -88,3 +88,21 @@ class SovereignViolationError(LumenError):
 
     def __init__(self, attempted_call: str) -> None:
         super().__init__(f"Sovereign boundary: external API call blocked ({attempted_call}).")
+
+
+class ModelNotAvailableError(LumenError):
+    """Required ONNX embedding model is missing or cannot be loaded."""
+
+    code = "LME-2001"
+
+    def __init__(self, model_path: str) -> None:
+        super().__init__(
+            f"Embedding model not available at '{model_path}'. "
+            "Run 'lumen model download <alias>' or 'lumen init --download-model' to provision it."
+        )
+
+
+class FeedbackLogError(LumenError):
+    """Could not write or read feedback log."""
+
+    code = "LME-2002"

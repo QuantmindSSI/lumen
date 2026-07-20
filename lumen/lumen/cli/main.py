@@ -3,34 +3,60 @@
 All commands execute real business logic.
 """
 
-import json
-from pathlib import Path
+import asyncio
+import signal
+import sys
+import time
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
+from lumen.brand.errors import ModelNotAvailableError
+from lumen.cli.models import model_app
+from lumen.compliance.safety_forgetting import get_recent_audit_events
 from lumen.config import LumenConfig
 from lumen.data.schema import ensure_schema, get_connection
-from lumen.force.contextual.embed import FallbackEmbedder
-from lumen.force.mnemonic.event_buffer import Event
+from lumen.force.contextual.embed import get_embedder
+from lumen.force.mnemonic.retrieval_graph import GraphChannel
 from lumen.force.mnemonic.store import store_memory
-from lumen.force.mnemonic.user_profile import get_profile, update_goals, update_values
-from lumen.force.mnemonic.value_model import learn_weights_from_feedback
 from lumen.lumen.controller import TwinForceController
+from lumen.lumen.illuminate import run_onboarding_wizard
 from lumen.lumen.search import SearchPipeline
-from lumen.compliance.safety_forgetting import get_recent_audit_events
+
 
 app = typer.Typer(name="lumen", help="Twin-force memory and context framework")
 memory_app = typer.Typer(name="memory", help="Memory operations")
 palace_app = typer.Typer(name="palace", help="Palace topology operations")
 tfc_app = typer.Typer(name="tfc", help="Twin-Force Controller operations")
 compliance_app = typer.Typer(name="compliance", help="Compliance operations")
+daemon_app = typer.Typer(name="daemon", help="Background scheduler")
+p2p_app = typer.Typer(name="p2p", help="P2P memory sharing")
 
 app.add_typer(memory_app)
 app.add_typer(palace_app)
 app.add_typer(tfc_app)
 app.add_typer(compliance_app)
+app.add_typer(model_app)
+app.add_typer(daemon_app)
+app.add_typer(p2p_app)
+
+
+# ---------------------------------------------------------------------------
+# API server command
+# ---------------------------------------------------------------------------
+
+
+@app.command(name="serve")
+def serve(
+    host: str = typer.Option("0.0.0.0", "--host", "-h"),
+    port: int = typer.Option(8848, "--port", "-p"),
+    reload: bool = typer.Option(False, "--reload"),
+):
+    """Start the FastAPI memory server."""
+    import uvicorn
+    console.print(f"[bold green]Starting Lumen API server on {host}:{port}[/bold green]")
+    uvicorn.run("lumen.api.server:app", host=host, port=port, reload=reload)
 
 console = Console()
 
@@ -42,7 +68,10 @@ def _ensure_conn(config: LumenConfig):
 
 
 @app.command()
-def init(device: str = typer.Option("generic", "--device", "-d")):
+def init(
+    device: str = typer.Option("generic", "--device", "-d"),
+    download_model: bool = typer.Option(False, "--download-model", help="Attempt to download the default embedding model"),
+):
     """Initialize Lumen palace for the given device profile."""
     config = LumenConfig(device=device)
     config.store_path.mkdir(parents=True, exist_ok=True)
@@ -58,6 +87,30 @@ def init(device: str = typer.Option("generic", "--device", "-d")):
     console.print(f"[bold green]Lumen initialised for device: {device}[/bold green]")
     console.print(f"Store path: {config.store_path}")
     console.print(f"DB path: {config.db_path}")
+
+    if download_model:
+        model_dir = config.model_path / config.embedding_model
+        if not model_dir.exists():
+            from lumen.cli.models import provision_embedding_model
+            try:
+                provision_embedding_model(config.embedding_model, config.model_path)
+                console.print(f"[bold green]Model '{config.embedding_model}' downloaded.[/bold green]")
+            except Exception as exc:
+                console.print(f"[yellow]Model download failed: {exc}[/yellow]")
+                console.print(
+                    "[yellow]You can export an ONNX model manually with:[/yellow]\n"
+                    "  optimum-cli export onnx --model BAAI/bge-small-en-v1.5 ~/.lumen/models/bge-small-en-v1.5"
+                )
+        else:
+            console.print(f"[green]Model already exists at {model_dir}[/green]")
+
+
+@app.command(name="illuminate")
+def illuminate():
+    """Run the Palace Construction onboarding wizard."""
+    config = LumenConfig()
+    conn = _ensure_conn(config)
+    run_onboarding_wizard(conn)
 
 
 @app.command()
@@ -81,11 +134,16 @@ def memory_store(
     content: str = typer.Argument(..., help="Content to store"),
     room: str = typer.Option(..., "--room", "-r"),
     locus: str = typer.Option(None, "--locus", "-l"),
+    allow_mock: bool = typer.Option(False, "--allow-mock", help="Allow deterministic mock embedder if model missing (testing only)"),
 ):
     """Store a memory through the full pipeline."""
     config = LumenConfig()
     conn = _ensure_conn(config)
-    embedder = FallbackEmbedder(dims=config.embedding_dims)
+    try:
+        embedder = get_embedder(config, allow_mock=allow_mock)
+    except ModelNotAvailableError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
     embedding = embedder.encode_single(content)
     chunk_id = store_memory(
         conn, content, room_name=room, locus_name=locus,
@@ -98,11 +156,18 @@ def memory_store(
 def memory_retrieve(
     query: str = typer.Argument(..., help="Query to retrieve memories for"),
     top_k: int = typer.Option(5, "--top-k", "-k"),
+    allow_mock: bool = typer.Option(False, "--allow-mock", help="Allow deterministic mock embedder if model missing (testing only)"),
 ):
     """Run search pipeline and print top results."""
     config = LumenConfig()
     conn = _ensure_conn(config)
-    pipeline = SearchPipeline(conn, config, tfc=_state_tfc)
+    try:
+        embedder = get_embedder(config, allow_mock=allow_mock)
+    except ModelNotAvailableError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+    graph = GraphChannel(conn)
+    pipeline = SearchPipeline(conn, config, tfc=_state_tfc, embedder=embedder, graph=graph)
     results = pipeline.execute(query)
     if not results:
         console.print("[yellow]No memories found.[/yellow]")
@@ -206,6 +271,112 @@ def compliance_audit(n: int = typer.Option(10, "--n")):
             ev.get("ts", ""), ev.get("event", ""),
             str(ev.get("chunk_id", "")), ev.get("reason", "")
         )
+    console.print(table)
+
+
+@daemon_app.command(name="start")
+def daemon_start():
+    """Start the SleepScheduler daemon in the foreground."""
+    from lumen.lumen.sleep import SleepScheduler
+
+    config = LumenConfig()
+    scheduler = SleepScheduler(config)
+    scheduler.start()
+    console.print("[bold green]Daemon started. Press Ctrl+C to stop.[/bold green]")
+
+    def _signal_handler(sig, frame):  # noqa: ARG001
+        console.print("\n[bold yellow]Shutting down daemon...[/bold yellow]")
+        scheduler.stop()
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, _signal_handler)
+    signal.signal(signal.SIGTERM, _signal_handler)
+
+    while True:
+        time.sleep(1)
+
+
+@daemon_app.command(name="run-once")
+def daemon_run_once():
+    """Run a single consolidation pass immediately."""
+    from lumen.lumen.sleep import SleepScheduler
+
+    config = LumenConfig()
+    scheduler = SleepScheduler(config)
+    scheduler.run_now()
+    console.print("[bold green]Consolidation pass completed.[/bold green]")
+
+
+@daemon_app.command(name="status")
+def daemon_status():
+    """Show scheduler status and next scheduled job times."""
+    from lumen.lumen.sleep import SleepScheduler
+
+    config = LumenConfig()
+    scheduler = SleepScheduler(config)
+    running = scheduler.is_running
+    console.print(f"Scheduler running: {running}")
+    if running:
+        for job in scheduler.scheduler.get_jobs():
+            next_run = job.next_run_time
+            console.print(f"  Job '{job.id}': next run at {next_run}")
+    else:
+        console.print("[yellow]Scheduler is not running.[/yellow]")
+
+
+@p2p_app.command(name="share")
+def p2p_share(
+    room: str = typer.Option(..., "--room", "-r"),
+    ttl: int = typer.Option(24, "--ttl"),
+):
+    """Share a room to discovered peers."""
+    from lumen.p2p.beam import BeamNode
+
+    config = LumenConfig()
+    node = BeamNode(config)
+
+    async def _share():
+        await node.start()
+        try:
+            await node.share_room(room, ttl)
+            await asyncio.sleep(0.5)
+        finally:
+            await node.stop()
+
+    asyncio.run(_share())
+    console.print(
+        f"[bold green]Shared room '{room}' with {len(node.peers)} peer(s)[/bold green]"
+    )
+
+
+@p2p_app.command(name="discover")
+def p2p_discover(
+    timeout: int = typer.Option(3, "--timeout", "-t"),
+):
+    """Discover peers on the local network."""
+    from lumen.p2p.beam import BeamNode
+
+    config = LumenConfig()
+    node = BeamNode(config)
+
+    async def _discover():
+        await node.start()
+        try:
+            await asyncio.sleep(timeout)
+            return list(node.peers.items())
+        finally:
+            await node.stop()
+
+    peers = asyncio.run(_discover())
+    if not peers:
+        console.print("[yellow]No beam peers discovered.[/yellow]")
+        return
+    table = Table(title="Discovered Beam Peers")
+    table.add_column("Name", style="magenta")
+    table.add_column("Address", style="green")
+    table.add_column("Port", justify="right")
+    for name, (host, port) in peers:
+        table.add_row(name, host, str(port))
     console.print(table)
 
 

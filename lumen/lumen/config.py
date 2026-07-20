@@ -29,6 +29,10 @@ class LumenConfig(BaseSettings):
     local_llm_model: str = "Qwen3-1.7B-Q4_K_M.gguf"
     consolidation_cpu_percent: float = 5.0
     scheduler_granularity: int = 300
+    consolidation_battery_threshold: int = 50
+    device_name: str = "lumen-device"
+    local_ip: str = "0.0.0.0"
+    beam_port: int = 8847
     store_path: Path = Path.home() / ".lumen" / "store"
     model_path: Path = Path.home() / ".lumen" / "models"
     cache_path: Path = Path.home() / ".lumen" / "cache"

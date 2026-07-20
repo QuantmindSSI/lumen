@@ -18,7 +18,7 @@ def get_connection(config) -> sqlite3.Connection:
 
     cfg: LumenConfig = config
     cfg.store_path.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(cfg.store_path / "lumen.db"))
+    conn = sqlite3.connect(str(cfg.store_path / "lumen.db"), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode = WAL")
     conn.execute("PRAGMA synchronous = NORMAL")

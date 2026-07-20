@@ -50,6 +50,14 @@ class SqliteVecBackend:
         except Exception:
             pass
 
+        # Always maintain vec_fallback as a direct blob-access mirror
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS vec_fallback (
+                chunk_id INTEGER PRIMARY KEY,
+                embedding BLOB NOT NULL
+            )
+        """)
+
         if self._has_sqlite_vec:
             conn.execute(f"""
                 CREATE VIRTUAL TABLE IF NOT EXISTS vec_chunks USING vec0(
@@ -57,24 +65,16 @@ class SqliteVecBackend:
                     embedding float[{dims}] distance_metric=cosine
                 )
             """)
-        else:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS vec_fallback (
-                    chunk_id INTEGER PRIMARY KEY,
-                    embedding BLOB NOT NULL
-                )
-            """)
 
     def add(self, chunk_id: int, vector: np.ndarray) -> None:
         blob = vector.astype(np.float32).tobytes()
+        self.conn.execute(
+            "INSERT OR REPLACE INTO vec_fallback(chunk_id, embedding) VALUES (?,?)",
+            (chunk_id, blob)
+        )
         if self._has_sqlite_vec:
             self.conn.execute(
                 "INSERT INTO vec_chunks(chunk_id, embedding) VALUES (?,?)",
-                (chunk_id, blob)
-            )
-        else:
-            self.conn.execute(
-                "INSERT OR REPLACE INTO vec_fallback(chunk_id, embedding) VALUES (?,?)",
                 (chunk_id, blob)
             )
 
@@ -106,10 +106,9 @@ class SqliteVecBackend:
         return hits[:k]
 
     def remove(self, chunk_id: int) -> None:
+        self.conn.execute("DELETE FROM vec_fallback WHERE chunk_id = ?", (chunk_id,))
         if self._has_sqlite_vec:
             self.conn.execute("DELETE FROM vec_chunks WHERE chunk_id = ?", (chunk_id,))
-        else:
-            self.conn.execute("DELETE FROM vec_fallback WHERE chunk_id = ?", (chunk_id,))
 
     def degrade(self, chunk_id: int, new_resolution: str) -> None:
         # For now, remove the vector on degrade and let fallback search handle missing vectors

@@ -6,7 +6,6 @@ Output wire: C2 (fusion engine)
 
 import sqlite3
 from dataclasses import dataclass
-from typing import List
 
 logger = None
 try:
@@ -20,11 +19,20 @@ except Exception:
 class GraphHit:
     chunk_id: int
     depth: int
-    path: List[int]
+    path: list[int]
 
 
 class GraphChannel:
     """Graph traversal backed by SQLite adjacency, with optional NetworkX/Kùzu."""
+
+    @staticmethod
+    def is_available(conn: sqlite3.Connection) -> bool:
+        """Return ``True`` if there is enough data to build a useful graph."""
+        try:
+            row = conn.execute("SELECT COUNT(*) FROM chunk WHERE valid_to IS NULL").fetchone()
+            return row is not None and row[0] >= 3
+        except Exception:
+            return False
 
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
@@ -46,7 +54,7 @@ class GraphChannel:
         ).fetchall()
         chunk_to_locus = {}
         chunk_to_room = {}
-        for cid, lid, rid, prov in rows:
+        for cid, lid, rid, _prov in rows:
             self._graph.add_node(cid)
             chunk_to_locus[cid] = lid
             chunk_to_room[cid] = rid
@@ -55,7 +63,7 @@ class GraphChannel:
         for cid, lid, _, _ in rows:
             if lid is not None:
                 locus_groups.setdefault(lid, []).append(cid)
-        for lid, cids in locus_groups.items():
+        for _lid, cids in locus_groups.items():
             for i in range(len(cids)):
                 for j in range(i + 1, len(cids)):
                     self._graph.add_edge(cids[i], cids[j])
@@ -71,13 +79,13 @@ class GraphChannel:
             if parent_chunk:
                 self._graph.add_edge(parent_chunk[0], cid)
 
-    def traverse_from_seed(self, seed_chunk_id: int, hops: int = 2) -> List[GraphHit]:
+    def traverse_from_seed(self, seed_chunk_id: int, hops: int = 2) -> list[GraphHit]:
         """BFS traversal from seed with depth limit."""
         if self._nx is not None and hasattr(self, '_graph'):
             return self._traverse_nx(seed_chunk_id, hops)
         return self._traverse_sqlite(seed_chunk_id, hops)
 
-    def _traverse_nx(self, seed_chunk_id: int, hops: int) -> List[GraphHit]:
+    def _traverse_nx(self, seed_chunk_id: int, hops: int) -> list[GraphHit]:
         hits = []
         visited = {seed_chunk_id: [seed_chunk_id]}
         queue = [(seed_chunk_id, 0)]
@@ -93,7 +101,7 @@ class GraphChannel:
                     hits.append(GraphHit(neighbor, depth + 1, path))
         return hits
 
-    def _traverse_sqlite(self, seed_chunk_id: int, hops: int) -> List[GraphHit]:
+    def _traverse_sqlite(self, seed_chunk_id: int, hops: int) -> list[GraphHit]:
         """Pure SQLite BFS fallback."""
         hits = []
         visited = {seed_chunk_id}

@@ -5,14 +5,14 @@ Output wire: B1 (context assembly)
 Secret sauce: Multi-channel RRF × V(m) × recency × FRQAD rerank
 """
 
+import sqlite3
 from dataclasses import dataclass
-from typing import List, Optional
 
 import numpy as np
-import sqlite3
 
-from lumen.force.mnemonic.retrieval_lexical import LexicalHit
 from lumen.force.mnemonic.retrieval_dense import DenseHit
+from lumen.force.mnemonic.retrieval_graph import GraphHit
+from lumen.force.mnemonic.retrieval_lexical import LexicalHit
 
 logger = None
 try:
@@ -28,7 +28,7 @@ class RetrievedChunk:
     room_name: str
     locus_name: str
     content: str
-    provenance_id: Optional[int]
+    provenance_id: int | None
     rrf_score: float
     vm_score: float
     frqad_score: float
@@ -37,13 +37,14 @@ class RetrievedChunk:
 
 
 def fuse_and_rerank(
-    lexical_hits: List[LexicalHit],
-    dense_hits: List[DenseHit],
-    goal_tree_keywords: List[str],
+    lexical_hits: list[LexicalHit],
+    dense_hits: list[DenseHit],
+    goal_tree_keywords: list[str],
     conn: sqlite3.Connection,
     budget_candidates: int = 200,
-    query_embedding: Optional[np.ndarray] = None,
-) -> List[RetrievedChunk]:
+    query_embedding: np.ndarray | None = None,
+    graph_hits: list[GraphHit] | None = None,
+) -> list[RetrievedChunk]:
     """
     Stage 3: Reciprocal Rank Fusion + V(m) + FRQAD rerank + recency boost.
     """
@@ -55,6 +56,10 @@ def fuse_and_rerank(
         rrfs[hit.chunk_id] = rrfs.get(hit.chunk_id, 0.0) + 1.0 / (k_rrf + rank)
     for rank, hit in enumerate(dense_hits, 1):
         rrfs[hit.chunk_id] = rrfs.get(hit.chunk_id, 0.0) + 1.0 / (k_rrf + rank)
+
+    if graph_hits:
+        for rank, hit in enumerate(graph_hits, 1):
+            rrfs[hit.chunk_id] = rrfs.get(hit.chunk_id, 0.0) + 1.0 / (k_rrf + rank) * 0.8
 
     chunk_ids = list(rrfs.keys())[:budget_candidates]
     if not chunk_ids:
@@ -71,7 +76,7 @@ def fuse_and_rerank(
 
     # Pre-fetch query embedding for FRQAD if provided
     query_vec = query_embedding
-    results: List[RetrievedChunk] = []
+    results: list[RetrievedChunk] = []
 
     for row in rows:
         cid, rid, lid, content, vm, prov, age_hours, res = row
@@ -121,7 +126,7 @@ def fuse_and_rerank(
     return results
 
 
-def _get_embedding(conn: sqlite3.Connection, chunk_id: int) -> Optional[np.ndarray]:
+def _get_embedding(conn: sqlite3.Connection, chunk_id: int) -> np.ndarray | None:
     row = conn.execute(
         "SELECT embedding FROM vec_fallback WHERE chunk_id = ?", (chunk_id,)
     ).fetchone()

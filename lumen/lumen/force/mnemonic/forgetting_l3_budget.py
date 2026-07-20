@@ -5,8 +5,10 @@ Output wire: A12 (optical degradation / release scheduler), D10 (actual vector m
 Secret sauce: Net-value-per-byte eviction
 """
 
+import contextlib
 import sqlite3
-from typing import Optional
+
+from lumen.sovereign.wear import WearAwareBatcher
 
 try:
     import psutil
@@ -22,7 +24,7 @@ except Exception:
     pass
 
 
-def budget_curated_eviction(conn: sqlite3.Connection, config, target_ram_mb: Optional[float] = None):
+def budget_curated_eviction(conn: sqlite3.Connection, config, target_ram_mb: float | None = None, batcher: WearAwareBatcher | None = None):
     """
     When resident memory footprint exceeds trigger, evict lowest V(m)/byte candidates.
     Eviction = optical degradation (FP32→FP16→INT8→BINARY→RELEASED).
@@ -56,30 +58,53 @@ def budget_curated_eviction(conn: sqlite3.Connection, config, target_ram_mb: Opt
     ).fetchall()
 
     evicted = 0
-    for chunk_id, vm, res, age in rows:
-        new_res = _next_resolution(res)
-        if new_res == "RELEASED":
-            conn.execute(
-                "UPDATE chunk SET optical_level = 2, valid_to = unixepoch() WHERE chunk_id = ?",
-                (chunk_id,)
-            )
-        else:
-            conn.execute(
-                "UPDATE chunk SET resolution = ?, optical_level = optical_level + 1 WHERE chunk_id = ?",
-                (new_res, chunk_id)
-            )
-        # Remove from vector index as resolution degraded
-        try:
-            from lumen.force.mnemonic.retrieval_dense import SqliteVecBackend
-            # Simple table-based removal via direct SQL so we don't need a global channel
-            conn.execute("DELETE FROM vec_fallback WHERE chunk_id = ?", (chunk_id,))
+    if batcher:
+        tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        has_vec_fallback = "vec_fallback" in tables
+        has_vec_chunks = "vec_chunks" in tables
+        for chunk_id, _vm, res, _age in rows:
+            new_res = _next_resolution(res)
+            if new_res == "RELEASED":
+                batcher.queue.append(
+                    (
+                        "UPDATE chunk SET optical_level = 2, valid_to = unixepoch() WHERE chunk_id = ?",
+                        (chunk_id,),
+                    )
+                )
+            else:
+                batcher.queue.append(
+                    (
+                        "UPDATE chunk SET resolution = ?, optical_level = 1 WHERE chunk_id = ?",
+                        (new_res, chunk_id),
+                    )
+                )
+            if has_vec_fallback:
+                batcher.queue.append(("DELETE FROM vec_fallback WHERE chunk_id = ?", (chunk_id,)))
+            if has_vec_chunks:
+                batcher.queue.append(("DELETE FROM vec_chunks WHERE chunk_id = ?", (chunk_id,)))
+            evicted += 1
+    else:
+        for chunk_id, _vm, res, _age in rows:
+            new_res = _next_resolution(res)
+            if new_res == "RELEASED":
+                conn.execute(
+                    "UPDATE chunk SET optical_level = 2, valid_to = unixepoch() WHERE chunk_id = ?",
+                    (chunk_id,)
+                )
+            else:
+                conn.execute(
+                    "UPDATE chunk SET resolution = ?, optical_level = 1 WHERE chunk_id = ?",
+                    (new_res, chunk_id)
+                )
+            # Remove from vector index as resolution degraded
             try:
-                conn.execute("DELETE FROM vec_chunks WHERE chunk_id = ?", (chunk_id,))
+                # Simple table-based removal via direct SQL so we don't need a global channel
+                conn.execute("DELETE FROM vec_fallback WHERE chunk_id = ?", (chunk_id,))
+                with contextlib.suppress(Exception):
+                    conn.execute("DELETE FROM vec_chunks WHERE chunk_id = ?", (chunk_id,))
             except Exception:
                 pass
-        except Exception:
-            pass
-        evicted += 1
+            evicted += 1
 
     if logger:
         logger.info("budget_eviction", evicted=evicted, triggered_at_mb=round(rss_mb, 1),

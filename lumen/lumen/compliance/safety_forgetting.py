@@ -55,11 +55,12 @@ def safety_forget_chunk(conn: sqlite3.Connection, chunk_id: int, reason: str) ->
     with open(AUDIT_LOG_PATH, "a") as f:
         f.write(json.dumps(audit) + "\n")
 
-    # Clear provenance tree recursively
-    _clear_provenance_tree(conn, chunk_id)
-
     # Remove from FTS5
     conn.execute("DELETE FROM chunk_fts WHERE rowid = ?", (chunk_id,))
+    # Break FK from chunk -> provenance before clearing provenance
+    conn.execute("UPDATE chunk SET provenance_root = NULL WHERE chunk_id = ?", (chunk_id,))
+    # Clear provenance tree recursively
+    _clear_provenance_tree(conn, chunk_id)
     # Logical delete in chunk table
     conn.execute(
         """UPDATE chunk
