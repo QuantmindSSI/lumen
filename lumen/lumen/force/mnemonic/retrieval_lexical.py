@@ -39,10 +39,15 @@ class LexicalChannel:
 
     @staticmethod
     def _sanitize(query: str) -> str:
-        """Remove characters that trigger FTS5 syntax errors."""
+        """Remove FTS5-special characters and convert to OR-query format."""
         cleaned = _FTS5_SPECIAL_RE.sub(" ", query)
-        # Collapse multiple spaces
-        return " ".join(cleaned.split())
+        cleaned = " ".join(cleaned.split())
+        if not cleaned:
+            return ""
+        tokens = cleaned.split()
+        if len(tokens) == 1:
+            return tokens[0]
+        return " OR ".join(tokens)
 
     def search(self, query: str, k: int = 20) -> list[LexicalHit]:
         """FTS5 MATCH with bm25 ranking."""

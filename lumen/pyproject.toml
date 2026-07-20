@@ -75,6 +75,13 @@ dev = [
 langchain = [
     "langchain>=0.3",
 ]
+benchmarks = [
+    "datasets>=2.0",
+    "sentence-transformers>=2.0",
+    "scipy>=1.10",
+    "pytrec-eval>=0.5",
+    "ir-measures>=0.3",
+]
 
 [project.scripts]
 lumen = "lumen.cli.main:app"
