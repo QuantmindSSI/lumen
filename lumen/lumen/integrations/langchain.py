@@ -187,7 +187,16 @@ class LumenChatMemory(_LumenChatMemoryBase):
         self._maybe_learn_weights()
 
     def _active_goals(self) -> list[str]:
-        """Placeholder for active-goal retrieval (M3)."""
+        """Return currently active goal keywords from the persistent GoalTree."""
+        if self._memory is not None and hasattr(self._memory, "goals"):
+            return self._memory.goals.active_path_keywords()
+        try:
+            mem = self.memory
+            if hasattr(mem, "goals"):
+                return mem.goals.active_path_keywords()
+        except Exception:
+            if logger:
+                logger.debug("active_goals_fallback", user_id=self.user_id)
         return []
 
     def _maybe_learn_weights(self) -> None:

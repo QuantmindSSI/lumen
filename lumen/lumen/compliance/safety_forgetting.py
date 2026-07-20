@@ -74,7 +74,23 @@ def safety_forget_chunk(conn: sqlite3.Connection, chunk_id: int, reason: str) ->
 
 
 def _clear_provenance_tree(conn: sqlite3.Connection, chunk_id: int) -> None:
-    """Walk provenance parent/child links and anonymise."""
+    """Walk provenance parent/child links and anonymise.
+
+    Deletes provenance records recursively: first all child records
+    that reference this chunk as their ``parent_provenance``, then the
+    chunk's own provenance record.
+    """
+    # Walk children: find records whose parent_provenance references
+    # any provenance row of this chunk.
+    child_rows = conn.execute(
+        """SELECT provenance_id FROM provenance
+           WHERE parent_provenance IN (
+               SELECT provenance_id FROM provenance WHERE chunk_id = ?
+           )""",
+        (chunk_id,),
+    ).fetchall()
+    for row in child_rows:
+        conn.execute("DELETE FROM provenance WHERE provenance_id = ?", (row[0],))
     conn.execute("DELETE FROM provenance WHERE chunk_id = ?", (chunk_id,))
 
 

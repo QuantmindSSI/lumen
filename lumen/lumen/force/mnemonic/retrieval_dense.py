@@ -112,7 +112,28 @@ class SqliteVecBackend:
             self.conn.execute("DELETE FROM vec_chunks WHERE chunk_id = ?", (chunk_id,))
 
     def degrade(self, chunk_id: int, new_resolution: str) -> None:
-        # For now, remove the vector on degrade and let fallback search handle missing vectors
+        """Re-quantize the vector from FP32→FP16→INT8→BINARY.
+
+        Falls back to removal if the quantizer is unavailable.
+        """
+        try:
+            from lumen.sovereign.optical import QUANTIZERS
+            if new_resolution in QUANTIZERS:
+                row = self.conn.execute(
+                    "SELECT embedding FROM vec_fallback WHERE chunk_id = ?",
+                    (chunk_id,),
+                ).fetchone()
+                if row:
+                    original = np.frombuffer(row[0], dtype=np.float32)
+                    quantized = QUANTIZERS[new_resolution](original)
+                    blob = np.asarray(quantized, dtype=np.float32).tobytes()
+                    self.conn.execute(
+                        "UPDATE vec_fallback SET embedding = ? WHERE chunk_id = ?",
+                        (blob, chunk_id),
+                    )
+                    return
+        except Exception:
+            pass
         self.remove(chunk_id)
 
 
@@ -169,6 +190,19 @@ class USearchBackend:
                 logger.debug("usearch_remove_failed", chunk_id=chunk_id, error=str(exc))
 
     def degrade(self, chunk_id: int, new_resolution: str) -> None:
+        try:
+            from lumen.sovereign.optical import QUANTIZERS
+            if new_resolution in QUANTIZERS:
+                try:
+                    matches = self.index.search(
+                        np.zeros(self.dims, dtype=np.float32), 1
+                    )
+                    # Cannot efficiently extract a single vector from USearch.
+                    # Fall through to full removal.
+                except Exception:
+                    pass
+        except Exception:
+            pass
         self.remove(chunk_id)
 
 

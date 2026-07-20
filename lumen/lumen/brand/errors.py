@@ -32,11 +32,23 @@ class LocusConflictError(PalaceError):
 
     code = "LME-1002"
 
+    def __init__(self, room: str, name: str) -> None:
+        super().__init__(
+            f"The locus '{name}' already exists within '{room}'. "
+            "Try a more specific name to avoid overlap."
+        )
+
 
 class ConsolidationFailedError(PalaceError):
     """Sleep-phase consolidation could not complete."""
 
     code = "LME-1003"
+
+    def __init__(self, detail: str = "") -> None:
+        msg = "Consolidation failed. The palace will retry on the next sleep cycle."
+        if detail:
+            msg += f" ({detail})"
+        super().__init__(msg)
 
 
 class ContextError(LumenError):
@@ -56,11 +68,23 @@ class RetrievalEmptyError(ContextError):
 
     code = "LCX-2002"
 
+    def __init__(self, query: str = "") -> None:
+        msg = "No memories matched your query."
+        if query:
+            msg += f" Try rephrasing '{query[:60]}'."
+        super().__init__(msg)
+
 
 class AssemblyTimeoutError(ContextError):
     """Context assembly exceeded its time budget."""
 
     code = "LCX-2003"
+
+    def __init__(self, budget_ms: float = 0) -> None:
+        msg = "Context assembly timed out."
+        if budget_ms > 0:
+            msg += f" Budget was {budget_ms:.0f} ms."
+        super().__init__(msg)
 
 
 class TFCError(LumenError):
@@ -74,11 +98,23 @@ class TFCStuckError(TFCError):
 
     code = "LLM-3002"
 
+    def __init__(self) -> None:
+        super().__init__(
+            "The Twin-Force Controller is stuck. Resetting attention to neutral. "
+            "Run 'lumen tfc set --a 0.5 --e 0.5' to recover."
+        )
+
 
 class ValueModelUncalibratedError(TFCError):
     """V(m) weights are not yet learned for this user."""
 
     code = "LLM-3004"
+
+    def __init__(self, user_id: str = "default") -> None:
+        super().__init__(
+            f"V(m) weights for '{user_id}' have not been calibrated yet. "
+            "Provide explicit feedback on at least 5 results to train the value model."
+        )
 
 
 class SovereignViolationError(LumenError):
@@ -106,3 +142,9 @@ class FeedbackLogError(LumenError):
     """Could not write or read feedback log."""
 
     code = "LME-2002"
+
+    def __init__(self, detail: str = "") -> None:
+        msg = "Feedback could not be recorded. The palace will attempt recovery."
+        if detail:
+            msg += f" ({detail})"
+        super().__init__(msg)
