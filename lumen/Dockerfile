@@ -13,6 +13,8 @@ LABEL org.opencontainers.image.licenses="Apache-2.0"
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV LUMEN_LOG_LEVEL=info
+ENV LUMEN_API_HOST=0.0.0.0
+ENV LUMEN_API_PORT=8848
 
 WORKDIR /app
 
@@ -33,4 +35,4 @@ EXPOSE 8848
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8848/health')" || exit 1
 
-ENTRYPOINT ["python", "-m", "lumen.api.server"]
+CMD ["uvicorn", "lumen.api.server:app", "--host", "0.0.0.0", "--port", "8848", "--log-level", "info"]

@@ -10,23 +10,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
+from pydantic import PrivateAttr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _default_config_path() -> Path:
     return Path.home() / ".lumen" / "config.toml"
-
-
-def _default_store_path() -> Path:
-    return Path.home() / ".lumen" / "store"
-
-
-def _default_model_path() -> Path:
-    return Path.home() / ".lumen" / "models"
-
-
-def _default_cache_path() -> Path:
-    return Path.home() / ".lumen" / "cache"
 
 
 DEVICE_PROFILES: dict[str, dict[str, object]] = {
@@ -72,6 +61,12 @@ class LumenConfig(BaseSettings):
     request_max_size_bytes: int = 1_048_576
     release_threshold: float = 0.05
 
+    _resolved: bool = PrivateAttr(default=False)
+
+    def model_post_init(self, __context: object) -> None:
+        """After field population, apply device-profile defaults."""
+        self.resolve_device_defaults()
+
     @property
     def db_uri(self) -> str:
         return f"{self.store_path}/lumen.db"
@@ -81,7 +76,11 @@ class LumenConfig(BaseSettings):
         return self.store_path / "lumen.db"
 
     def resolve_device_defaults(self) -> None:
+        """Apply device-profile defaults for fields still at their generic defaults."""
+        if self._resolved:
+            return
         profile = DEVICE_PROFILES.get(self.device, DEVICE_PROFILES["generic"])
         self.context_budget = int(profile.get("context_budget", self.context_budget))
         self.memory_limit_mb = int(profile.get("memory_limit_mb", self.memory_limit_mb))
         self.vector_index = str(profile.get("vector_index", self.vector_index))
+        self._resolved = True

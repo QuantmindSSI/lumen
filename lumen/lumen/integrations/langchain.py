@@ -40,11 +40,16 @@ try:
 except Exception:
     BaseChatMemory = None  # type: ignore[assignment,misc]
 
+if BaseChatMemory is not None:
+    _LumenChatMemoryBase = BaseChatMemory
+else:
+    _LumenChatMemoryBase = object
 
-class LumenChatMemory:
+
+class LumenChatMemory(_LumenChatMemoryBase):
     """Lumen-backed memory adapter for LangChain agents.
 
-    If ``langchain`` is installed with ``pip install lumen[langchain]``,
+    When ``langchain`` is installed (``pip install lumen[langchain]``),
     this class extends ``langchain.memory.BaseChatMemory`` for native
     agent integration.  When ``langchain`` is absent it falls back to a
     standalone mode that still exposes the same API surface.
@@ -72,25 +77,37 @@ class LumenChatMemory:
         input_key: str = "input",
         output_key: str = "output",
     ) -> None:
+        if BaseChatMemory is not None:
+            BaseChatMemory.__init__(
+                self,
+                return_messages=return_messages,
+                input_key=input_key,
+                output_key=output_key,
+            )
+
         self.config = config or LumenConfig()
         self.user_id = user_id
         self.room = room
         self.system_prompt_override = system_prompt_override
         self._embedder = embedder
-        self.return_messages = return_messages
-        self.input_key = input_key
-        self.output_key = output_key
         self._memory: ConversationMemory | None = None
-
-        # LangChain native memory fields
-        self.chat_memory: Any = self  # duck-type for BaseChatMemory consumers
         self._last_context: str = ""
 
     @property
     def memory(self) -> ConversationMemory:
         if self._memory is None:
+            embedder = self._embedder
+            if embedder is None:
+                try:
+                    from lumen.force.contextual.embed import get_embedder
+                    embedder = get_embedder(self.config, allow_mock=False)
+                except Exception:
+                    from lumen.force.contextual.embed import MockEmbedder
+                    if logger:
+                        logger.warning("langchain_memory_using_mock_embedder")
+                    embedder = MockEmbedder(dims=self.config.embedding_dims)
             self._memory = ConversationMemory(
-                config=self.config, embedder=self._embedder
+                config=self.config, embedder=embedder,
             )
         return self._memory
 

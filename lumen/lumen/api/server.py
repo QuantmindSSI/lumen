@@ -45,7 +45,6 @@ logger = structlog.get_logger()
 _config = LumenConfig()
 _config.store_path.mkdir(parents=True, exist_ok=True)
 _config.model_path.mkdir(parents=True, exist_ok=True)
-_config.resolve_device_defaults()
 
 limiter = Limiter(key_func=get_remote_address, default_limits=[_config.api_rate_limit])
 

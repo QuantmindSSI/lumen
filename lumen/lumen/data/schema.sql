@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS locus (
 CREATE TABLE IF NOT EXISTS chunk (
     chunk_id        INTEGER PRIMARY KEY,
     locus_id        INTEGER REFERENCES locus(locus_id) ON DELETE SET NULL,
-    room_id         INTEGER NOT NULL REFERENCES room(room_id),
+    room_id         INTEGER NOT NULL REFERENCES room(room_id) ON DELETE CASCADE,
     content         TEXT NOT NULL,             -- raw text / memory payload
     content_hash    TEXT NOT NULL,             -- SHA-256 of content for dedup
     created_at      INTEGER DEFAULT (unixepoch()),

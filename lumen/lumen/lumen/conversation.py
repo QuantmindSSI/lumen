@@ -88,7 +88,13 @@ class ConversationMemory:
         if embedder is not None:
             self.embedder = embedder
         else:
-            self.embedder = get_embedder(self.config, allow_mock=False)
+            try:
+                self.embedder = get_embedder(self.config, allow_mock=False)
+            except Exception:
+                from lumen.force.contextual.embed import MockEmbedder
+                if logger:
+                    logger.warning("conversation_using_mock_embedder")
+                self.embedder = MockEmbedder(dims=self.config.embedding_dims)
 
         self.pipeline = SearchPipeline(
             self.conn,
