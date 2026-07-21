@@ -22,8 +22,7 @@ This project adheres to a standard of respect, inclusivity, and intellectual hon
 Before opening an issue:
 
 1. Search existing issues to avoid duplicates
-2. Check the local `dev-docs/REVIEW_CHECKLIST.md` for known limitations
-3. Test against the latest `main` branch
+2. Test against the latest `main` branch
 
 When reporting, include:
 

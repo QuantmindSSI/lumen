@@ -229,8 +229,6 @@ The dashboard shows real-time retrieval effectiveness, Twin-Force Controller sta
 | Forgets gracefully | ✅ | ❌ | ❌ | ❌ |
 | Runs offline | ✅ | ⚠️ | ✅ | ❌ |
 
-Full benchmark reports are available in the local `dev-docs/` directory.
-
 ---
 
 ## Documentation
