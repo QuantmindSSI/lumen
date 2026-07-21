@@ -54,7 +54,7 @@ dependencies = [
     # NLP / embeddings
     "spacy>=3.7",
     "onnxruntime>=1.17",
-    "optimum[onnxruntime]>=1.17",
+    "optimum[onnxruntime]>=2.2.0",
     # Local LLM (optional, large)
     "llama-cpp-python>=0.2.0 ; platform_machine == 'aarch64' or platform_machine == 'x86_64'",
     # API server (pilot requirement)
