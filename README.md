@@ -229,7 +229,7 @@ The dashboard shows real-time retrieval effectiveness, Twin-Force Controller sta
 | Forgets gracefully | ✅ | ❌ | ❌ | ❌ |
 | Runs offline | ✅ | ⚠️ | ✅ | ❌ |
 
-See full benchmarks in [`SCIENTIFIC_BENCHMARKS.md`](SCIENTIFIC_BENCHMARKS.md) and [`SOTA_COMPARISON.md`](SOTA_COMPARISON.md).
+See full benchmarks in [`dev-docs/SCIENTIFIC_BENCHMARKS.md`](dev-docs/SCIENTIFIC_BENCHMARKS.md) and [`dev-docs/SOTA_COMPARISON.md`](dev-docs/SOTA_COMPARISON.md).
 
 ---
 
@@ -237,13 +237,13 @@ See full benchmarks in [`SCIENTIFIC_BENCHMARKS.md`](SCIENTIFIC_BENCHMARKS.md) an
 
 | Document | Purpose |
 |---|---|
-| [`BRAND_BIBLE.md`](BRAND_BIBLE.md) | Visual identity, voice, and philosophy |
+| [`dev-docs/BRAND_BIBLE.md`](dev-docs/BRAND_BIBLE.md) | Visual identity, voice, and philosophy |
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Production deployment guide |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to contribute code and docs |
 | [`SECURITY.md`](SECURITY.md) | Security policy and vulnerability reporting |
-| [`SCIENTIFIC_BENCHMARKS.md`](SCIENTIFIC_BENCHMARKS.md) | Retrieval, forgetting, and performance benchmarks |
-| [`SOTA_COMPARISON.md`](SOTA_COMPARISON.md) | Head-to-head vs state-of-the-art |
-| [`ENTERPRISE_METRICS.md`](ENTERPRISE_METRICS.md) | Business effectiveness metrics and dashboard guide |
+| [`dev-docs/SCIENTIFIC_BENCHMARKS.md`](dev-docs/SCIENTIFIC_BENCHMARKS.md) | Retrieval, forgetting, and performance benchmarks |
+| [`dev-docs/SOTA_COMPARISON.md`](dev-docs/SOTA_COMPARISON.md) | Head-to-head vs state-of-the-art |
+| [`dev-docs/ENTERPRISE_METRICS.md`](dev-docs/ENTERPRISE_METRICS.md) | Business effectiveness metrics and dashboard guide |
 
 ---
 
