@@ -87,5 +87,8 @@ credentials/
 !.env.example
 !*.env.sample
 
-# Internal / local-only documentation (not for public repo)
+# Internal / local-only documentation and assets (not for public repo)
 dev-docs/
+.opencode/
+ios/
+lumen/benchmarks/*/results/

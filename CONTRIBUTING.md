@@ -22,7 +22,7 @@ This project adheres to a standard of respect, inclusivity, and intellectual hon
 Before opening an issue:
 
 1. Search existing issues to avoid duplicates
-2. Check `dev-docs/REVIEW_CHECKLIST.md` for known limitations
+2. Check the local `dev-docs/REVIEW_CHECKLIST.md` for known limitations
 3. Test against the latest `main` branch
 
 When reporting, include:
@@ -135,13 +135,12 @@ The forgetting stack is L1-L4. If you need L5:
 
 Docs live in:
 - `README.md` — project overview and quickstart
-- `dev-docs/BRAND_BIBLE.md` — visual/verbal identity
 - `DEPLOYMENT.md` — production guide
 - `docs/` (future) — full documentation site
 - Inline docstrings — API reference
 
 When documenting:
-- Use the Lumen lexicon (see `dev-docs/BRAND_BIBLE.md` §5.1)
+- Use the Lumen lexicon (Memory Palace, Context Window, Dimming, Consolidation, etc.)
 - Provide working code examples
 - Include expected output where helpful
 - Keep line length <= 100 characters
