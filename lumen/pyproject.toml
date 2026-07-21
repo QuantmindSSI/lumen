@@ -79,7 +79,7 @@ mcp = [
     "mcp>=1.0",
 ]
 benchmarks = [
-    "datasets>=2.0",
+    "datasets>=5.0.0",
     "sentence-transformers>=2.0",
     "scipy>=1.10",
     "pytrec-eval>=0.5",
