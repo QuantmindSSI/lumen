@@ -5,8 +5,9 @@ Output wire: A9 (V(m) recalculation), A11 (consolidation)
 Secret sauce: Locus occupancy causes Weakening
 """
 
-import numpy as np
 import sqlite3
+
+import numpy as np
 
 logger = None
 try:

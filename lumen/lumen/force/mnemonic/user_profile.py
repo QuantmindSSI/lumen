@@ -4,10 +4,9 @@ Serialize embeddings as BLOBs using numpy.tobytes().
 """
 
 import json
-from typing import List, Optional
+import sqlite3
 
 import numpy as np
-import sqlite3
 
 
 def get_profile(conn: sqlite3.Connection, user_id: str = "default") -> dict:
@@ -25,7 +24,7 @@ def get_profile(conn: sqlite3.Connection, user_id: str = "default") -> dict:
     return dict(row) if row else {}
 
 
-def update_goals(conn: sqlite3.Connection, user_id: str, goals: List[str]) -> None:
+def update_goals(conn: sqlite3.Connection, user_id: str, goals: list[str]) -> None:
     goals_json = json.dumps(goals)
     conn.execute(
         """INSERT INTO user_profile(user_id, goals_json)
@@ -35,7 +34,7 @@ def update_goals(conn: sqlite3.Connection, user_id: str, goals: List[str]) -> No
     )
 
 
-def update_values(conn: sqlite3.Connection, user_id: str, values: List[str]) -> None:
+def update_values(conn: sqlite3.Connection, user_id: str, values: list[str]) -> None:
     values_json = json.dumps(values)
     conn.execute(
         """INSERT INTO user_profile(user_id, values_json)
@@ -65,7 +64,7 @@ def update_value_embeddings(conn: sqlite3.Connection, user_id: str, embeddings: 
     )
 
 
-def get_goal_embeddings(conn: sqlite3.Connection, user_id: str = "default") -> Optional[np.ndarray]:
+def get_goal_embeddings(conn: sqlite3.Connection, user_id: str = "default") -> np.ndarray | None:
     row = conn.execute(
         "SELECT goal_embeddings FROM user_profile WHERE user_id = ?", (user_id,)
     ).fetchone()

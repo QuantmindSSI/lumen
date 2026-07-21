@@ -7,9 +7,8 @@ Secret sauce: FRQAD distance metric switch-in (Task A4)
 
 import sqlite3
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
-from typing import List, Protocol
+from typing import Protocol
 
 import numpy as np
 
@@ -30,7 +29,7 @@ class DenseHit:
 
 class VectorBackend(Protocol):
     def add(self, chunk_id: int, vector: np.ndarray) -> None: ...
-    def search(self, query_vector: np.ndarray, k: int) -> List[DenseHit]: ...
+    def search(self, query_vector: np.ndarray, k: int) -> list[DenseHit]: ...
     def remove(self, chunk_id: int) -> None: ...
     def degrade(self, chunk_id: int, new_resolution: str) -> None: ...
 
@@ -75,11 +74,14 @@ class SqliteVecBackend:
         )
         if self._has_sqlite_vec:
             self.conn.execute(
+                "DELETE FROM vec_chunks WHERE chunk_id = ?", (chunk_id,)
+            )
+            self.conn.execute(
                 "INSERT INTO vec_chunks(chunk_id, embedding) VALUES (?,?)",
                 (chunk_id, blob)
             )
 
-    def search(self, query_vector: np.ndarray, k: int) -> List[DenseHit]:
+    def search(self, query_vector: np.ndarray, k: int) -> list[DenseHit]:
         blob = query_vector.astype(np.float32).tobytes()
         if self._has_sqlite_vec:
             rows = self.conn.execute(
@@ -90,7 +92,7 @@ class SqliteVecBackend:
         else:
             return self._brute_force_search(query_vector, k)
 
-    def _brute_force_search(self, query_vector: np.ndarray, k: int) -> List[DenseHit]:
+    def _brute_force_search(self, query_vector: np.ndarray, k: int) -> list[DenseHit]:
         rows = self.conn.execute("SELECT chunk_id, embedding FROM vec_fallback").fetchall()
         q = query_vector.astype(np.float32)
         qn = np.linalg.norm(q)
@@ -98,10 +100,7 @@ class SqliteVecBackend:
         for cid, emb_blob in rows:
             vec = np.frombuffer(emb_blob, dtype=np.float32)
             vn = np.linalg.norm(vec)
-            if vn == 0 or qn == 0:
-                sim = 0.0
-            else:
-                sim = float(np.dot(q, vec) / (qn * vn))
+            sim = 0.0 if vn == 0 or qn == 0 else float(np.dot(q, vec) / (qn * vn))
             hits.append(DenseHit(cid, sim, vec))
         hits.sort(key=lambda x: x.score, reverse=True)
         return hits[:k]
@@ -178,7 +177,7 @@ class USearchBackend:
     def add(self, chunk_id: int, vector: np.ndarray) -> None:
         self.index.add(chunk_id, vector.astype(np.float32))
 
-    def search(self, query_vector: np.ndarray, k: int) -> List[DenseHit]:
+    def search(self, query_vector: np.ndarray, k: int) -> list[DenseHit]:
         matches = self.index.search(query_vector.astype(np.float32), k)
         return [DenseHit(int(m.key), float(m.distance), np.array([])) for m in matches]
 
@@ -193,14 +192,9 @@ class USearchBackend:
         try:
             from lumen.sovereign.optical import QUANTIZERS
             if new_resolution in QUANTIZERS:
-                try:
-                    matches = self.index.search(
-                        np.zeros(self.dims, dtype=np.float32), 1
-                    )
-                    # Cannot efficiently extract a single vector from USearch.
-                    # Fall through to full removal.
-                except Exception:
-                    pass
+                # Cannot efficiently extract a single vector from USearch.
+                # Fall through to full removal.
+                pass
         except Exception:
             pass
         self.remove(chunk_id)
@@ -223,7 +217,7 @@ class VectorChannel:
     def add(self, chunk_id: int, vector: np.ndarray) -> None:
         self.backend.add(chunk_id, vector)
 
-    def search(self, query_vector: np.ndarray, k: int) -> List[DenseHit]:
+    def search(self, query_vector: np.ndarray, k: int) -> list[DenseHit]:
         return self.backend.search(query_vector, k)
 
     def remove(self, chunk_id: int) -> None:

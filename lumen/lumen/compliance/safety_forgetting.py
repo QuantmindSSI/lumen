@@ -6,12 +6,10 @@ Secret sauce: Provenance-chain deletion (GateMem requirement)
 """
 
 import json
-import os
 import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List
 
 logger = None
 try:
@@ -30,7 +28,7 @@ PII_PATTERNS = {
 AUDIT_LOG_PATH = Path.home() / ".lumen" / "logs" / "compliance.jsonl"
 
 
-def safety_scan_chunk(content: str) -> List[str]:
+def safety_scan_chunk(content: str) -> list[str]:
     """Return list of triggered safety rule names."""
     hits = []
     for rule_name, pattern in PII_PATTERNS.items():
@@ -94,12 +92,12 @@ def _clear_provenance_tree(conn: sqlite3.Connection, chunk_id: int) -> None:
     conn.execute("DELETE FROM provenance WHERE chunk_id = ?", (chunk_id,))
 
 
-def get_recent_audit_events(n: int = 10) -> List[dict]:
+def get_recent_audit_events(n: int = 10) -> list[dict]:
     """Read last N compliance audit events from JSONL."""
     if not AUDIT_LOG_PATH.exists():
         return []
     lines = []
-    with open(AUDIT_LOG_PATH, "r") as f:
+    with open(AUDIT_LOG_PATH) as f:
         for line in f:
             line = line.strip()
             if line:

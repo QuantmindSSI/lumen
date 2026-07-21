@@ -24,7 +24,6 @@ from lumen.lumen.controller import TwinForceController
 from lumen.lumen.illuminate import run_onboarding_wizard
 from lumen.lumen.search import SearchPipeline
 
-
 app = typer.Typer(name="lumen", help="Twin-force memory and context framework")
 memory_app = typer.Typer(name="memory", help="Memory operations")
 palace_app = typer.Typer(name="palace", help="Palace topology operations")

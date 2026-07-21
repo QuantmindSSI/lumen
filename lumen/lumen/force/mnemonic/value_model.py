@@ -7,7 +7,6 @@ Secret sauce: Per-user learned weights, no API calls, CPU-only
 
 import json
 import math
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -32,7 +31,7 @@ DEFAULT_WEIGHTS = {
 FACTOR_KEYS = list(DEFAULT_WEIGHTS.keys())
 
 
-def _max_similarity_to_phrases(content: str, phrases: List[str]) -> float:
+def _max_similarity_to_phrases(content: str, phrases: list[str]) -> float:
     """Compute max cosine-like overlap via simple word-set Jaccard."""
     if not phrases:
         return 0.0
@@ -48,7 +47,7 @@ def _max_similarity_to_phrases(content: str, phrases: List[str]) -> float:
     return best
 
 
-def _jaccard_overlap(content: str, values: List[str]) -> float:
+def _jaccard_overlap(content: str, values: list[str]) -> float:
     """Jaccard overlap between content words and value words."""
     if not values:
         return 0.0
@@ -75,10 +74,10 @@ def _simple_sentiment_polarity(text: str) -> float:
 def extract_factors(
     content: str,
     source_type: str,
-    user_goals: List[str],
-    user_values: List[str],
+    user_goals: list[str],
+    user_values: list[str],
     sentiment_pipeline=None,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Compute raw factor scores from content and user profile."""
     # 1. Goal relevance
     g_rel = _max_similarity_to_phrases(content, user_goals) if user_goals else 0.5
@@ -131,12 +130,12 @@ def extract_factors(
 
 def compute_vm(
     content: str,
-    user_weights: Optional[Dict[str, float]],
+    user_weights: dict[str, float] | None,
     source_type: str,
-    user_goals: Optional[List[str]] = None,
-    user_values: Optional[List[str]] = None,
+    user_goals: list[str] | None = None,
+    user_values: list[str] | None = None,
     sentiment_pipeline=None,
-) -> Tuple[float, Dict[str, float]]:
+) -> tuple[float, dict[str, float]]:
     """Scalar V(m) = sigmoid( dot(weights, factors) )."""
     weights = {**DEFAULT_WEIGHTS, **(user_weights or {})}
     factors = extract_factors(
@@ -153,7 +152,7 @@ def learn_weights_from_feedback(
     conn,
     user_id: str = "default",
     method: str = "nelder-mead",
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Learn per-user weights from click/retrieval-success feedback."""
     import sqlite3
     if not isinstance(conn, sqlite3.Connection):
@@ -191,7 +190,7 @@ def learn_weights_from_feedback(
     x0 = np.array([DEFAULT_WEIGHTS[k] for k in FACTOR_KEYS])
     result = minimize(loss, x0, method="Nelder-Mead",
                       bounds=[(0.01, 0.99)] * len(FACTOR_KEYS))
-    learned = dict(zip(FACTOR_KEYS, result.x.tolist()))
+    learned = dict(zip(FACTOR_KEYS, result.x.tolist(), strict=True))
     s = sum(learned.values())
     if s == 0:
         s = 1.0

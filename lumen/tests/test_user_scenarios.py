@@ -67,7 +67,7 @@ class TestUserStoryDailyLogging:
                 locus_name=locus, embedding=emb, config=fresh_config,
             )
 
-        pipeline = SearchPipeline(fresh_conn, fresh_config)
+        pipeline = SearchPipeline(fresh_conn, fresh_config, embedder=embedder)
         results = pipeline.execute("dentist reschedule")
         assert len(results) >= 1
         assert any("dentist" in r.content.lower() for r in results)

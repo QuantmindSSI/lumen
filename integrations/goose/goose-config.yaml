@@ -1,0 +1,11 @@
+extensions:
+  lumen-memory:
+    type: stdio
+    cmd: python
+    args:
+      - -m
+      - lumen.integrations.mcp_server
+    env:
+      LUMEN_DEVICE: generic
+      LUMEN_STORE_PATH: "${HOME}/.lumen/store"
+      LUMEN_MODEL_PATH: "${HOME}/.lumen/models"

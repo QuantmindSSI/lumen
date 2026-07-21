@@ -135,3 +135,39 @@ class TestTurn:
         body = resp.json()
         assert body["user_chunk_id"] > 0
         assert body["assistant_chunk_id"] > 0
+
+
+class TestDashboard:
+    def test_dashboard_serves_html(self, client):
+        resp = client.get("/dashboard")
+        assert resp.status_code == 200
+        assert "text/html" in resp.headers.get("content-type", "")
+        assert "Lumen Memory Palace" in resp.text
+
+    def test_dashboard_data(self, client):
+        # Seed a room
+        client.post("/store", json={
+            "content": "dashboard test memory",
+            "room": "dashboard_test",
+            "source_type": "user_input",
+        })
+        resp = client.get("/dashboard-data")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "rooms" in body
+        assert "total_chunks" in body
+        assert "tfc" in body
+        assert "memory_budget_pct" in body
+        assert "degradation_stage" in body
+        assert any(r["name"] == "dashboard_test" for r in body["rooms"])
+
+    def test_metrics(self, client):
+        resp = client.get("/metrics")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["lumen_version"] == "0.1.0-alpha"
+        assert "system" in body
+        assert "palace" in body
+        assert "business" in body
+        assert body["business"]["data_sovereignty_pct"] == 100
+        assert body["business"]["api_cost_per_query_usd"] == 0.0

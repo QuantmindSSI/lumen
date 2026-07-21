@@ -7,7 +7,6 @@ import sqlite3
 import time
 
 from lumen.config import LumenConfig
-from lumen.force.contextual.embed import MockEmbedder
 from lumen.force.mnemonic.retrieval_dense import VectorChannel
 from lumen.force.mnemonic.retrieval_graph import GraphChannel
 from lumen.force.mnemonic.retrieval_lexical import LexicalChannel
@@ -34,7 +33,11 @@ class SearchPipeline:
         self.intent_router = IntentRouter()
         self.lexical = LexicalChannel(conn)
         self.vector = VectorChannel(config, conn)
-        self.embedder = embedder or MockEmbedder(dims=config.embedding_dims)
+        if embedder is not None:
+            self.embedder = embedder
+        else:
+            from lumen.force.contextual.embed import get_embedder
+            self.embedder = get_embedder(config, allow_mock=False)
         self.graph = graph
 
     def execute(

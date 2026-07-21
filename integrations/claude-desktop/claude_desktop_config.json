@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "lumen-memory": {
+      "command": "python",
+      "args": ["-m", "lumen.integrations.mcp_server"],
+      "env": {
+        "LUMEN_DEVICE": "generic",
+        "LUMEN_STORE_PATH": "${userHome}/.lumen/store",
+        "LUMEN_MODEL_PATH": "${userHome}/.lumen/models"
+      }
+    }
+  }
+}

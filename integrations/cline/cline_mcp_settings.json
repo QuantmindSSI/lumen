@@ -1,0 +1,12 @@
+{
+  "mcpServers": [
+    {
+      "name": "lumen-memory",
+      "command": "python",
+      "args": ["-m", "lumen.integrations.mcp_server"],
+      "env": {
+        "LUMEN_DEVICE": "generic"
+      }
+    }
+  ]
+}

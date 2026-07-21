@@ -75,6 +75,9 @@ dev = [
 langchain = [
     "langchain>=0.3",
 ]
+mcp = [
+    "mcp>=1.0",
+]
 benchmarks = [
     "datasets>=2.0",
     "sentence-transformers>=2.0",

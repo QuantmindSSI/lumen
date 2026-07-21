@@ -3,7 +3,6 @@
 Simple rule-based router since fasttext model may not exist.
 """
 
-from typing import Optional
 
 from lumen.lumen.controller import TwinForceController
 
@@ -11,7 +10,7 @@ from lumen.lumen.controller import TwinForceController
 class IntentRouter:
     """Deterministic rule-based intent classifier with TFC fallback."""
 
-    def __init__(self, model_path: Optional[str] = None):
+    def __init__(self, model_path: str | None = None):
         self.model = None
         if model_path:
             try:
@@ -20,7 +19,7 @@ class IntentRouter:
             except Exception:
                 pass
 
-    def classify(self, query: str, tfc: Optional[TwinForceController] = None) -> str:
+    def classify(self, query: str, tfc: TwinForceController | None = None) -> str:
         q = query.lower().strip()
         # Explicit rule routing
         if any(q.startswith(prefix) for prefix in ("what is", "what are", "remember", "who is", "where is")):
@@ -43,7 +42,6 @@ class IntentRouter:
                 pass
 
         # TFC deterministic fallback
-        if tfc is not None:
-            if tfc.state.a > 0.6:
-                return "exploratory"
+        if tfc is not None and tfc.state.a > 0.6:
+            return "exploratory"
         return "factual"

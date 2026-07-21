@@ -3,8 +3,6 @@
 Manages the dynamic equilibrium between Mnemonic and Contextual forces.
 """
 
-from dataclasses import dataclass, field
-from typing import Dict
 
 from pydantic import BaseModel, Field
 
@@ -16,7 +14,7 @@ class TFCState(BaseModel):
     tau: float = Field(default=7.0, ge=0.0, description="temporal horizon (days)")
     r: int = Field(default=3, ge=0, le=5, description="resolution level")
 
-    def to_env(self) -> Dict[str, float]:
+    def to_env(self) -> dict[str, float]:
         return {"e": self.e, "a": self.a, "tau": self.tau, "r": self.r}
 
 
@@ -51,5 +49,5 @@ class TwinForceController:
             self.state.tau = 7.0
             self.state.r = 3
 
-    def to_env(self) -> Dict[str, float]:
+    def to_env(self) -> dict[str, float]:
         return self.state.to_env()

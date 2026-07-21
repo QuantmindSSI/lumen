@@ -40,10 +40,7 @@ try:
 except Exception:
     BaseChatMemory = None  # type: ignore[assignment,misc]
 
-if BaseChatMemory is not None:
-    _LumenChatMemoryBase = BaseChatMemory
-else:
-    _LumenChatMemoryBase = object
+_LumenChatMemoryBase = BaseChatMemory if BaseChatMemory is not None else object
 
 
 class LumenChatMemory(_LumenChatMemoryBase):
@@ -296,10 +293,7 @@ if BaseStore is not None:
                 )
                 self.memory.conn.commit()
                 content = f"{subkey}:{value.decode('utf-8', errors='replace')}"
-                if self.memory.embedder:
-                    emb = self.memory.embedder.encode_single(content)
-                else:
-                    emb = None
+                emb = self.memory.embedder.encode_single(content) if self.memory.embedder else None
                 store_memory(
                     self.memory.conn,
                     content=content,

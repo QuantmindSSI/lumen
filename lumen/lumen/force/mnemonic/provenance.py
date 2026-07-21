@@ -5,10 +5,8 @@ Output wire: A6 (store), C5 (context assembly), A11 (compliance purge)
 Secret sauce: Engram-inspired bi-temporal model + supersession chains
 """
 
-from dataclasses import dataclass
-from typing import Optional
-
 import sqlite3
+from dataclasses import dataclass
 
 logger = None
 try:
@@ -23,20 +21,20 @@ class ProvenanceRecord:
     provenance_id: int
     chunk_id: int
     source_type: str
-    source_ref: Optional[str]
+    source_ref: str | None
     confidence: float
-    extraction_method: Optional[str]
-    parent_provenance: Optional[int]
+    extraction_method: str | None
+    parent_provenance: int | None
 
 
 def create_provenance(
     conn: sqlite3.Connection,
     chunk_id: int,
     source_type: str,
-    source_ref: Optional[str] = None,
+    source_ref: str | None = None,
     confidence: float = 1.0,
-    extraction_method: Optional[str] = None,
-    parent_provenance: Optional[int] = None,
+    extraction_method: str | None = None,
+    parent_provenance: int | None = None,
 ) -> int:
     """Bi-temporal provenance: every memory enters with a causal chain."""
     cur = conn.execute(
@@ -55,8 +53,8 @@ def create_provenance(
 def get_effective_fact(
     conn: sqlite3.Connection,
     content_hash_prefix: str,
-    as_of_transaction: Optional[int] = None
-) -> Optional[dict]:
+    as_of_transaction: int | None = None
+) -> dict | None:
     """
     Engram merge-on-read: find the currently valid version of a fact,
     respecting supersession chains. If as_of_transaction is given, time-travel.

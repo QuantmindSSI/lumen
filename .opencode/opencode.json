@@ -1,0 +1,27 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "skills": {
+    "paths": [".opencode/skills"]
+  },
+  "mcp": {
+    "lumen-memory": {
+      "type": "local",
+      "command": [
+        "/home/azureuser/lumen/lumen/.venv/bin/python",
+        "-m",
+        "lumen.integrations.mcp_server"
+      ],
+      "enabled": true,
+      "env": {
+        "LUMEN_DEVICE": "generic",
+        "LUMEN_STORE_PATH": "/home/azureuser/.lumen/store",
+        "LUMEN_MODEL_PATH": "/home/azureuser/.lumen/models",
+        "PYTHONPATH": "/home/azureuser/lumen/lumen"
+      }
+    }
+  },
+  "instructions": [
+    "AGENTS.md",
+    ".opencode/skills/lumen-memory/SKILL.md"
+  ]
+}

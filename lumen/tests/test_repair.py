@@ -112,9 +112,9 @@ def test_unknown_reason_returns_empty():
     assert repair.attempt_repair("q", "unknown") == []
 
 
-def test_no_repair_when_results_good(monkeypatch, memory_db, test_config):
+def test_no_repair_when_results_good(monkeypatch, memory_db, test_config, mock_embedder):
     tfc = TwinForceController(TFCState(a=0.5))
-    pipe = SearchPipeline(memory_db, test_config, tfc=tfc)
+    pipe = SearchPipeline(memory_db, test_config, tfc=tfc, embedder=mock_embedder)
 
     call_count = [0]
 
@@ -130,9 +130,9 @@ def test_no_repair_when_results_good(monkeypatch, memory_db, test_config):
     assert tfc.state.a == 0.5  # unchanged by repair
 
 
-def test_repair_triggered_on_empty_results(monkeypatch, memory_db, test_config):
+def test_repair_triggered_on_empty_results(monkeypatch, memory_db, test_config, mock_embedder):
     tfc = TwinForceController(TFCState(a=0.5))
-    pipe = SearchPipeline(memory_db, test_config, tfc=tfc)
+    pipe = SearchPipeline(memory_db, test_config, tfc=tfc, embedder=mock_embedder)
 
     call_count = [0]
 
@@ -148,9 +148,9 @@ def test_repair_triggered_on_empty_results(monkeypatch, memory_db, test_config):
     assert tfc.state.a == 0.8  # repaired
 
 
-def test_repair_triggered_on_low_confidence(monkeypatch, memory_db, test_config):
+def test_repair_triggered_on_low_confidence(monkeypatch, memory_db, test_config, mock_embedder):
     tfc = TwinForceController(TFCState(a=0.5))
-    pipe = SearchPipeline(memory_db, test_config, tfc=tfc)
+    pipe = SearchPipeline(memory_db, test_config, tfc=tfc, embedder=mock_embedder)
 
     call_count = [0]
 
@@ -165,9 +165,9 @@ def test_repair_triggered_on_low_confidence(monkeypatch, memory_db, test_config)
     assert tfc.state.a == 0.65
 
 
-def test_max_repair_attempts_zero(monkeypatch, memory_db, test_config):
+def test_max_repair_attempts_zero(monkeypatch, memory_db, test_config, mock_embedder):
     tfc = TwinForceController(TFCState(a=0.5))
-    pipe = SearchPipeline(memory_db, test_config, tfc=tfc)
+    pipe = SearchPipeline(memory_db, test_config, tfc=tfc, embedder=mock_embedder)
 
     call_count = [0]
 
@@ -183,9 +183,9 @@ def test_max_repair_attempts_zero(monkeypatch, memory_db, test_config):
     assert tfc.state.a == 0.5
 
 
-def test_repair_returns_original_if_repair_also_empty(monkeypatch, memory_db, test_config):
+def test_repair_returns_original_if_repair_also_empty(monkeypatch, memory_db, test_config, mock_embedder):
     tfc = TwinForceController(TFCState(a=0.5))
-    pipe = SearchPipeline(memory_db, test_config, tfc=tfc)
+    pipe = SearchPipeline(memory_db, test_config, tfc=tfc, embedder=mock_embedder)
 
     call_count = [0]
 

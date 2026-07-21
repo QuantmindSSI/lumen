@@ -142,7 +142,7 @@ def model_download(
 @model_app.command(name="export")
 def model_export(
     repo_id: str = typer.Argument(..., help="HuggingFace repo ID (e.g. BAAI/bge-small-en-v1.5)"),
-    output: Path = typer.Option(None, "--output", "-o", help="Output directory"),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Output directory"),  # noqa: B008
 ) -> None:
     """Export a HuggingFace model to ONNX using optimum-cli."""
     from lumen.config import LumenConfig
