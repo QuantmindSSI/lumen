@@ -86,3 +86,11 @@ credentials/
 .env*
 !.env.example
 !*.env.sample
+
+# Internal / local-only documentation (not for public repo)
+BRAND_BIBLE.md
+REVIEW_CHECKLIST.md
+lumen/ENTERPRISE_METRICS.md
+lumen/COMPETITIVE_COMPARISON.md
+lumen/SOTA_COMPARISON.md
+lumen/SCIENTIFIC_BENCHMARKS.md
