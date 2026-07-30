@@ -27,7 +27,6 @@ MANIFEST
 *.spec
 
 # Virtual environments
-.env
 .venv
 env/
 venv/
@@ -38,7 +37,6 @@ venv.bak/
 
 # IDE
 .idea/
-.vscode/
 *.swp
 *.swo
 *~
@@ -83,7 +81,6 @@ benchmarks/results/
 *.crt
 secrets/
 credentials/
-.env*
 !.env.example
 !*.env.sample
 
@@ -92,3 +89,9 @@ dev-docs/
 .opencode/
 ios/
 lumen/benchmarks/*/results/
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore
+config.bat
+node_modules
