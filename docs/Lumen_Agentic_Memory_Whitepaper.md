@@ -40,7 +40,7 @@ Lumen is a beta-ready framework with the following concrete capabilities:
 - **Hardened API surface**: FastAPI server with API-key authentication, slowapi rate limiting, CORS middleware, request-size limits, request-ID propagation, and a global unhandled-exception handler.
 - **Wear-aware batch writer**: defers and coalesces SQLite writes to reduce SD/eMMC flash wear on embedded devices (Raspberry Pi, Jetson, Orange Pi).
 - **Effectiveness dashboard**: self-hosted HTML dashboard with real-time palace topology, retrieval metrics, Twin-Force Controller state, forgetting pipeline health, and SOTA comparison — served at `/dashboard` with no external network or CDN dependencies (all assets bundled).
-- **Test coverage**: 29 test suites totaling ~140 tests, covering core storage, retrieval, forgetting, conversation, API server, LangChain/LangGraph/MCP integrations, P2P Beam, optical degradation, wear batching, and user scenarios.
+- **Test coverage**: 26 test files containing 194 test functions, covering core storage, retrieval, forgetting, conversation, API server, LangChain/LangGraph/MCP integrations, P2P Beam, optical degradation, wear batching, and user scenarios.
 
 ### 1.4 Design Principles
 
@@ -391,7 +391,7 @@ We maintain an explicit posture of claim deflation. The V(m) factors are shallow
 
 Lumen advances agentic memory from research concept to beta usability. The core contribution is architectural: a structured memory palace with heuristic forgetting, operating entirely on-device, plugged into LangGraph, LangChain, MCP, and FastAPI ecosystems. Closed engineering gaps include API hardening, punctuation-safe BM25, sqlite-vec interference coverage, USearch graceful fallback, and dynamic dashboard metrics. Partially addressed gaps include a hand-crafted domain corpus, implicit feedback learning, P2P sharing via Beam, corrected optical degradation transitions, and — critically — a BEIR subset evaluation harness that replaces synthetic-only benchmarks with real relevance judgments. Remaining open work includes a re-access reinforcement mechanism for selective forgetting, a trained intent-to-room router, and encryption-at-rest for the SQLite database.
 
-The system remains Apache 2.0–licensed open-source software. The complete source code (59 modules, ~5,058 lines of Python, ~140 tests), documentation, six benchmark suites (including BEIR), domain corpus, and integrations are available at `https://github.com/QuantumindSSI/lumen`.
+The system remains Apache 2.0–licensed open-source software. The complete source code (59 modules, ~7.4K lines of Python, 194 tests), documentation, six benchmark suites (including BEIR), domain corpus, and integrations are available at `https://github.com/QuantumindSSI/lumen`.
 
 ---
 
