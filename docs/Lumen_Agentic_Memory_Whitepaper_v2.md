@@ -33,7 +33,7 @@ Common to all three: the absence of a *forgetting mechanism*, the reliance on *f
 Lumen is a beta-ready framework with the following concrete capabilities:
 
 - **Native LangGraph integration** (`lumen.integrations.langgraph`): a `LumenCheckpointSaver` implementing LangGraph's `BaseCheckpointSaver` protocol, plus a `LumenGraphStore` for cross-thread long-term memory — enabling sovereign graph-agent state persistence without external checkpoints.
-- **Model Context Protocol (MCP) server**: exposes search, store, assemble, and feedback operations to OpenCode, Claude Desktop, and GitHub Copilot via stdio transport.
+- **Model Context Protocol (MCP) server**: exposes search, store, assemble, turn, feedback, status, and dashboard operations to OpenCode, Claude Desktop, and GitHub Copilot via stdio transport.
 - **Beam P2P sharing protocol**: household-local, encrypted, ephemeral memory sharing with permission decay, service discovery via Zeroconf, and NaCl encryption.
 - **Five first-party benchmark suites**: retrieval (R@k, nDCG, MAP, MRR), forgetting (90-day survival curves, interference precision), performance (latency p50/p95/p99, footprint), palace navigation efficiency (room-constrained speedup vs. global), and end-to-end memory quality (multi-turn conversational recall with 7 personas, 28 queries).
 - **Domain corpus and seeding**: a hand-crafted 111-chunk, 8-room knowledge base used for both palace seeding and benchmarking.
@@ -135,7 +135,7 @@ At default `τ_h = 7`, all 10,000 synthetic chunks decay below threshold within 
 
 Lumen ships with two LangGraph-native adapters, installable via `pip install lumen[langgraph]`:
 
-- **`LumenCheckpointSaver`**: implements LangGraph's `BaseCheckpointSaver` protocol. Each `thread_id` receives its own locus inside a dedicated `langgraph` room, providing natural isolation and thread-scoped retrieval. Checkpoints are stored as structured memories with full provenance chains.
+- **`LumenCheckpointSaver`**: implements LangGraph's `BaseCheckpointSaver` protocol. Each `thread_id` receives its own locus inside a dedicated `langgraph` room, providing natural isolation and thread-scoped retrieval. Checkpoints are stored as structured memories with provenance chains referencing parent checkpoints.
 - **`LumenGraphStore`**: provides cross-thread long-term memory for LangGraph graphs, enabling agents to reference facts learned in one thread while executing another.
 
 The integration includes 9 test cases verifying checkpoint round-trips, async iteration (`alist`), and state consistency across writes.
@@ -147,8 +147,10 @@ The MCP server (`lumen.integrations.mcp_server`) exposes Lumen operations to MCP
 - `lumen_search` — hybrid semantic + lexical search
 - `lumen_store` — store a memory chunk with room/locus/source-type
 - `lumen_assemble` — retrieve and assemble context in one call
-- `lumen_feedback` — log explicit or implicit feedback
-- `lumen_status` — palace overview with room/locus/chunk counts
+- `lumen_turn` — store a full conversation turn and log implicit feedback
+- `lumen_feedback` — log explicit or implicit feedback for a retrieved chunk
+- `lumen_status` — palace overview with room/chunk counts and TFC state
+- `lumen_dashboard` — display real-time effectiveness dashboard with benchmarks
 
 This enables agents running inside Claude Desktop or OpenCode to read from and write to the user's local Lumen palace without custom API clients.
 
