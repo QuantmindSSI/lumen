@@ -1,6 +1,6 @@
 """C8: Real SearchPipeline.
 
-Orchestrates: intent classify → parallel BM25 + dense retrieval → fusion → budget enforcement → TFC update
+Orchestrates: intent classify → parallel BM25 + dense retrieval → fusion → budget enforcement → TFC update → re-access reinforcement
 """
 
 import sqlite3
@@ -16,6 +16,8 @@ from lumen.lumen.fusion import RetrievedChunk, fuse_and_rerank
 from lumen.lumen.intent import IntentRouter
 
 logger = get_console_logger(__name__)
+
+_REACCESS_BOOST = 1.05
 
 
 class SearchPipeline:
@@ -40,6 +42,37 @@ class SearchPipeline:
 
             self.embedder = get_embedder(config, allow_mock=False)
         self.graph = graph
+
+    def _record_access(self, results: list[RetrievedChunk]) -> None:
+        """Boost V(m) and update last_access_at for retrieved chunks.
+
+        This is the re-access reinforcement mechanism that makes L1 decay
+        selective: frequently-accessed memories survive, unused ones fade.
+        Each retrieved chunk gets a small multiplicative V(m) boost
+        (clamped to 1.0) and a fresh last_access_at timestamp.
+        """
+        if not results:
+            return
+        chunk_ids = [r.chunk_id for r in results if r.chunk_id]
+        if not chunk_ids:
+            return
+        placeholders = ",".join("?" for _ in chunk_ids)
+        now = int(time.time())
+        self.conn.execute(
+            f"""UPDATE chunk
+                SET vm_score = MIN(vm_score * ?, 1.0),
+                    last_access_at = ?,
+                    access_count = access_count + 1
+                WHERE chunk_id IN ({placeholders})""",
+            [_REACCESS_BOOST, now] + chunk_ids,
+        )
+        self.conn.commit()
+        if logger:
+            logger.info(
+                "reaccess_reinforcement",
+                chunks=len(chunk_ids),
+                boost=_REACCESS_BOOST,
+            )
 
     def execute(
         self,
@@ -76,7 +109,10 @@ class SearchPipeline:
             graph_hits=graph_hits or None,
         )
 
-        # Stage 4: TFC update
+        # Stage 4: Re-access reinforcement — retrieved chunks get a V(m) boost
+        self._record_access(results)
+
+        # Stage 5: TFC update
         self.tfc.update(
             {
                 "novelty": 0.5 if not results else 0.3,
@@ -85,7 +121,7 @@ class SearchPipeline:
             }
         )
 
-        # Stage 5: Repair loop
+        # Stage 6: Repair loop
         if max_repair_attempts > 0:
             reason = None
             if not results:
