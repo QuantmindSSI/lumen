@@ -1,4 +1,4 @@
-# Lumen: A Production-Ready Agentic Memory Framework with Structured Topology, Twin-Force Control, and Native Integrations
+# Lumen: A Production-Oriented Agentic Memory Framework with Structured Topology, Twin-Force Control, and Native Integrations
 
 **QuantumindSSI Research — Engineering Report v0.2.0 (Beta)**
 
@@ -8,7 +8,7 @@
 
 ## Abstract
 
-We present Lumen, an open-source agentic memory system that organizes agent memories in a structured *memory palace* topology (rooms, loci, corridors) governed by a heuristic *Twin-Force Controller* (TFC) that balances mnemonic conservation against contextual attention. Lumen provides native third-party integrations, a hardened API surface, and validated benchmark suites. Key subsystems include: a LangGraph checkpoint saver and graph store for sovereign agent-state persistence; a Model Context Protocol (MCP) server for OpenCode and Claude Desktop; a Beam P2P sharing protocol for household-local memory exchange; a wear-aware batch writer for SD/eMMC endurance; five first-party benchmark suites (retrieval, forgetting, performance, palace navigation efficiency, and end-to-end memory quality); and a hardened FastAPI server with authentication, rate limiting, and CORS. The system operates on-device via ONNX Runtime and SQLite with a ~90 MB RAM footprint, a 75% smaller storage footprint than comparable vector stores, and no metered external API cost. We report 1.32–1.50× latency speedup from room-constrained search versus flat global search with >99.8% recall retention, 96.4% R@1 and 100% R@5/R@10 in a 28-query multi-turn E2E pilot, and 95.1% implicit feedback satisfaction from 41 live ratings. We explicitly identify open limitations, including the need for a re-access reinforcement mechanism in the forgetting pipeline and full BEIR/MTEB leaderboard validation.
+We present Lumen, an open-source agentic memory system that organizes agent memories in a structured *memory palace* topology (rooms, loci, corridors) governed by a heuristic *Twin-Force Controller* (TFC) that balances mnemonic conservation against contextual attention. Lumen provides native third-party integrations, a hardened API surface, and validated benchmark suites. Key subsystems include: a LangGraph checkpoint saver and graph store for sovereign agent-state persistence; a Model Context Protocol (MCP) server for OpenCode and Claude Desktop; a Beam P2P sharing protocol for household-local memory exchange; a wear-aware batch writer for SD/eMMC endurance; five first-party benchmark suites (retrieval, forgetting, performance, palace navigation efficiency, and end-to-end memory quality); and a hardened FastAPI server with authentication, rate limiting, and CORS. The system operates on-device via ONNX Runtime and SQLite with a ~90 MB RAM footprint, a 75% smaller storage footprint than comparable vector stores, and no metered external API cost. On small-scale pilots (28 queries, 41 feedback ratings), we report 1.32–1.50× latency speedup from room-constrained search versus flat global search with >99.8% recall retention, 96.4% R@1 and 100% R@5/R@10 in multi-turn E2E testing, and 95.1% implicit feedback satisfaction. These numbers are directionally promising but reflect limited sample sizes and a low-cardinality benchmark structure. We explicitly identify open limitations, most critically that the default forgetting pipeline performs unconditional decay (all memories fade without a re-access reinforcement mechanism) — the primary gating item for any production-ready claim — along with the absence of full BEIR/MTEB leaderboard validation.
 
 ---
 
@@ -294,7 +294,7 @@ Room-constrained search provides 1.32–1.50× latency reduction by pruning ~80%
 
 ### 5.3 Forgetting Simulation
 
-Over 90 simulated days with default `τ_h = 7`, all 10,000 synthetic chunks decay to mean V(m) below 0.05. This confirms that **the default forgetting pipeline performs unconditional decay, not selective curation.** The L2 interference layer correctly identifies high-similarity pairs (cos > 0.85) and applies penalties. L3 budget eviction respects the degradation chain. However, without a re-access reinforcement boost, no memory survives indefinitely at default settings.
+Over 90 simulated days with default `τ_h = 7`, all 10,000 synthetic chunks decay to mean V(m) below 0.05. This confirms that **the default forgetting pipeline performs unconditional decay, not selective curation.** The L2 interference layer correctly identifies high-similarity pairs (cos > 0.85) and applies penalties. L3 budget eviction respects the degradation chain. Without a re-access reinforcement boost, no memory survives indefinitely at default settings. **This is the primary gating item for any production-readiness claim: the current system forgets everything by design.**
 
 ### 5.4 End-to-End Memory Quality
 
@@ -321,22 +321,7 @@ This is a self-reported dashboard metric derived from the `/feedback` endpoint, 
 
 ### 5.6 Cross-System Resource Comparison
 
-**Table 4: Approximate Resource Comparison**
-
-| Metric | Lumen | Chroma | FAISS | Qdrant |
-|---|---|---|---|---|
-| Install size (MB) | **~180** | ~250 | ~300 | ~400 |
-| Runtime RAM (MB) | **~90** | ~150 | ~200 | ~250 |
-| 10K storage (MB) | **~35** | ~50 | ~60 | ~80 |
-| Avg retrieval (ms) | 12 | **8** | **5** | **6** |
-| p99 retrieval (ms) | **45** | 120 | 35 | 40 |
-| Cold start (s) | **0.8** | 2.1 | 1.5 | 3.2 |
-| Graceful forgetting | **✅** | ❌ | ❌ | ❌ |
-| Offline operation | **✅** | ⚠️ | ✅ | ❌ |
-| LangGraph checkpoint | **✅** | ❌ | ❌ | ❌ |
-| MCP server | **✅** | ❌ | ❌ | ❌ |
-
-Sources: Lumen numbers measured via psutil RSS and benchmark harness; competitor numbers from their published documentation. A shared-harness evaluation with identical embedders is still pending.
+A cross-system resource comparison table is provided in Appendix A. **Important caveat:** Lumen numbers are measured directly via psutil RSS and benchmark harness; competitor numbers are sourced from their published documentation, which may reflect different hardware, embedders, and corpus sizes. The table is provided for rough orientation only. A shared-harness evaluation with identical embedders is pending and should supersede the appendix table when available.
 
 ### 5.7 Component Ablation
 
@@ -429,3 +414,33 @@ The system remains Apache 2.0–licensed open-source software. The complete sour
 ---
 
 *QuantumindSSI — July 2026 — Apache 2.0 License*
+
+---
+
+## Appendix A: Approximate Cross-System Resource Comparison
+
+**Important methodological caveat.** The numbers below are heterogeneous: Lumen measurements were taken directly via psutil RSS and the benchmark harness on single-core CPU environments using `all-MiniLM-L6-v2` embeddings. Competitor numbers (Chroma, FAISS, Qdrant) are sourced from their respective published documentation and may reflect different hardware, embedding models, corpus sizes, and measurement methodologies. The qualitative feature rows indicate whether the feature exists in each system, not a performance ranking. **This table should be read as rough orientation, not as a controlled head-to-head evaluation.** A shared-harness comparison with identical embedders, hardware, and corpus is planned and should supersede this appendix when available.
+
+**Table A1: Approximate Quantitative Comparison (Heterogeneous Sources)**
+
+| Metric | Lumen (measured) | Chroma (docs) | FAISS (docs) | Qdrant (docs) |
+|---|---|---|---|---|
+| Install size (MB) | ~180 | ~250 | ~300 | ~400 |
+| Runtime RAM (MB) | ~90 | ~150 | ~200 | ~250 |
+| 10K storage (MB) | ~35 | ~50 | ~60 | ~80 |
+| Avg retrieval (ms) | 12 | 8 | 5 | 6 |
+| p99 retrieval (ms) | 45 | 120 | 35 | 40 |
+| Cold start (s) | 0.8 | 2.1 | 1.5 | 3.2 |
+
+**Table A2: Qualitative Feature Comparison (Existence, Not Performance)**
+
+| Feature | Lumen | Chroma | FAISS | Qdrant |
+|---|---|---|---|---|
+| Graceful forgetting | Yes | No | No | No |
+| Offline operation | Yes | Partial | Yes | No |
+| LangGraph checkpoint | Yes | No | No | No |
+| MCP server | Yes | No | No | No |
+
+---
+
+*End of Appendix A*
