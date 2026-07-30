@@ -146,9 +146,7 @@ def test_run_onboarding_wizard(monkeypatch):
     console = Console()
     run_onboarding_wizard(conn, nlp=mock_nlp, console=console)
 
-    rooms = conn.execute(
-        "SELECT name, room_type, topological_order FROM room"
-    ).fetchall()
+    rooms = conn.execute("SELECT name, room_type, topological_order FROM room").fetchall()
     assert len(rooms) == 3
     assert all(r["room_type"] == "domain" for r in rooms)
 

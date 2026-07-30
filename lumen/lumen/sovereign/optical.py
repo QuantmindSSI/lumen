@@ -13,13 +13,10 @@ import numpy as np
 if TYPE_CHECKING:
     from lumen.force.mnemonic.retrieval_dense import VectorBackend
 
-logger = None
-try:
-    import structlog
+from lumen.logging import get_console_logger
 
-    logger = structlog.get_logger()
-except Exception:
-    pass
+logger = get_console_logger(__name__)
+
 
 # ---------------------------------------------------------------------------
 # Numba or plain-numpy quantizers

@@ -42,9 +42,8 @@ def client(tmp_path, monkeypatch):
 
     # Build pipeline after state is set
     from lumen.lumen.search import SearchPipeline
-    server_mod._state["pipeline"] = SearchPipeline(
-        conn, config, embedder=embedder
-    )
+
+    server_mod._state["pipeline"] = SearchPipeline(conn, config, embedder=embedder)
 
     with TestClient(app) as c:
         yield c
@@ -71,11 +70,14 @@ class TestStatus:
 
 class TestStoreAndSearch:
     def test_store_memory(self, client):
-        resp = client.post("/store", json={
-            "content": "The quick brown fox",
-            "room": "animals",
-            "source_type": "user_input",
-        })
+        resp = client.post(
+            "/store",
+            json={
+                "content": "The quick brown fox",
+                "room": "animals",
+                "source_type": "user_input",
+            },
+        )
         assert resp.status_code == 200
         body = resp.json()
         assert body["chunk_id"] > 0
@@ -83,11 +85,14 @@ class TestStoreAndSearch:
 
     def test_search_finds_stored(self, client):
         # Store
-        client.post("/store", json={
-            "content": "project alpha requirements",
-            "room": "projects",
-            "source_type": "user_input",
-        })
+        client.post(
+            "/store",
+            json={
+                "content": "project alpha requirements",
+                "room": "projects",
+                "source_type": "user_input",
+            },
+        )
         # Search
         resp = client.post("/search", json={"query": "alpha requirements", "top_k": 5})
         assert resp.status_code == 200
@@ -99,17 +104,23 @@ class TestStoreAndSearch:
 class TestFeedback:
     def test_feedback_creation(self, client):
         # Seed a chunk first so FK constraint is satisfied
-        client.post("/store", json={
-            "content": "feedback target",
-            "room": "feedback_test",
-            "source_type": "user_input",
-        })
-        resp = client.post("/feedback", json={
-            "chunk_id": 1,
-            "was_useful": True,
-            "user_id": "alice",
-            "feedback_type": "explicit",
-        })
+        client.post(
+            "/store",
+            json={
+                "content": "feedback target",
+                "room": "feedback_test",
+                "source_type": "user_input",
+            },
+        )
+        resp = client.post(
+            "/feedback",
+            json={
+                "chunk_id": 1,
+                "was_useful": True,
+                "user_id": "alice",
+                "feedback_type": "explicit",
+            },
+        )
         assert resp.status_code == 200
         assert resp.json()["success"] is True
 
@@ -125,12 +136,15 @@ class TestAssemble:
 
 class TestTurn:
     def test_turn_store(self, client):
-        resp = client.post("/turn", json={
-            "user_msg": "Hello",
-            "assistant_msg": "Hi there",
-            "room": "conversations",
-            "retrieved_chunk_ids": [],
-        })
+        resp = client.post(
+            "/turn",
+            json={
+                "user_msg": "Hello",
+                "assistant_msg": "Hi there",
+                "room": "conversations",
+                "retrieved_chunk_ids": [],
+            },
+        )
         assert resp.status_code == 200
         body = resp.json()
         assert body["user_chunk_id"] > 0
@@ -146,11 +160,14 @@ class TestDashboard:
 
     def test_dashboard_data(self, client):
         # Seed a room
-        client.post("/store", json={
-            "content": "dashboard test memory",
-            "room": "dashboard_test",
-            "source_type": "user_input",
-        })
+        client.post(
+            "/store",
+            json={
+                "content": "dashboard test memory",
+                "room": "dashboard_test",
+                "source_type": "user_input",
+            },
+        )
         resp = client.get("/dashboard-data")
         assert resp.status_code == 200
         body = resp.json()

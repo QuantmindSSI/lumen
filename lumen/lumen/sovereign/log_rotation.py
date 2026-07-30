@@ -11,13 +11,9 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-logger = None
-try:
-    import structlog
+from lumen.logging import get_console_logger
 
-    logger = structlog.get_logger()
-except Exception:
-    pass
+logger = get_console_logger(__name__)
 
 
 def get_log_dir() -> Path:

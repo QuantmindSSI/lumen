@@ -10,23 +10,20 @@ import re
 import sqlite3
 from dataclasses import dataclass
 
-logger = None
-try:
-    import structlog
-    logger = structlog.get_logger()
-except Exception:
-    pass
+from lumen.logging import get_console_logger
+
+logger = get_console_logger(__name__)
 
 # Characters that FTS5 treats as operators/special and that commonly
 # appear in user queries (e.g. question marks, quotes, asterisks).
-_FTS5_SPECIAL_RE = re.compile(r'[?"*~^()+-]')
+_FTS5_SPECIAL_RE = re.compile(r'[?"*~^()+\-\'.,:;!@#$%^&=<>/\\|`{}\[\]\n\r\t]')
 
 
 @dataclass(frozen=True)
 class LexicalHit:
     chunk_id: int
-    rank: float          # BM25 score from FTS5 (lower is better in raw FTS5 rank)
-    match_info: bytes    # raw FTS5 matchinfo for phrase highlighting
+    rank: float  # BM25 score from FTS5 (lower is better in raw FTS5 rank)
+    match_info: bytes  # raw FTS5 matchinfo for phrase highlighting
 
 
 class LexicalChannel:
@@ -62,20 +59,25 @@ class LexicalChannel:
             ORDER BY rank
             LIMIT ?
             """,
-            (safe_query, k)
+            (safe_query, k),
         ).fetchall()
 
         hits = [LexicalHit(cid, rank, b"") for cid, rank in rows]
         if logger:
-            logger.info("lexical_retrieve", query=safe_query, hits=len(hits),
-                        top_score=hits[0].rank if hits else None)
+            logger.info(
+                "lexical_retrieve",
+                query=safe_query,
+                hits=len(hits),
+                top_score=hits[0].rank if hits else None,
+            )
         return hits
 
     def index_chunk(self, chunk_id: int, content: str) -> None:
         """Called by A6 (store pipeline) after chunk insert."""
         import hashlib
+
         content_hash = hashlib.sha256(content.encode()).hexdigest()
         self.conn.execute(
             "INSERT INTO chunk_fts(rowid, content, content_hash) VALUES (?,?,?)",
-            (chunk_id, content, content_hash)
+            (chunk_id, content, content_hash),
         )

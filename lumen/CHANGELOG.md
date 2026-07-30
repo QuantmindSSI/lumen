@@ -2,6 +2,37 @@
 
 All notable changes to Lumen will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- Domain corpus dataset (`datasets/domain_corpus.json`) — a hand-crafted knowledge corpus with 111 fact chunks across 8 rooms (machine_learning, nlp, cybersecurity, distributed_systems, healthcare_ai, quantum_computing, open_source, climate_tech), each with 4 structured loci. Designed for both palace seeding (`python -m datasets.seed`) and benchmarking.
+- Palace seed script (`datasets/seed.py`) — populates a Lumen instance from the domain corpus JSON with real embeddings, creating a production-ready knowledge base in ~2 seconds.
+- Palace Navigation Efficiency (PNE) benchmark (`benchmarks/navigation/`) — proprietary evaluation suite measuring latency speedup, recall retention, intent-routing accuracy, and pruning efficiency of Lumen's room/locus topology vs. flat global search. Outputs JSON + Markdown.
+- End-to-End Memory Quality benchmark (`benchmarks/e2e/`) — multi-turn conversational memory persistence benchmark with 7 agent personas, 28 queries across 14 sessions. Measures R@k semantic recall, similarity scores, and per-query latency. Bridges Lumen to the SOTA evaluation standards used by MemGPT/Mem0/Zep.
+- LangGraph integration (`lumen.integrations.langgraph`) — `LumenCheckpointSaver` for graph state persistence and `LumenGraphStore` for cross-thread long-term memory. Installable via `pip install lumen[langgraph]`. Includes 9 test cases.
+- Centralized logging helper (`lumen.logging`) — `get_console_logger()` with structlog preference and stdlib `logging` fallback, eliminating the project-wide `except Exception: pass` anti-pattern from 32 modules.
+
+### Changed
+- Roadmap in README updated to reflect M1–M3 completion and M4 in-progress status.
+- Full codebase reformatted with `ruff format` for consistent style.
+- `benchmarks/run_all.py` now includes the `navigation` and `e2e` suites in the unified orchestrator.
+- Dashboard retrieval metrics (`mcp_server.py`) now load benchmark values dynamically from JSON result files instead of hardcoded constants.
+
+### Fixed
+- **CRITICAL**: USearch vector backend now gracefully falls back to brute-force (FakeSqliteVecBackend) when the `usearch` package is unavailable, instead of crashing with `NotImplementedError`.
+- **CRITICAL**: `SqliteVecBackend.degrade()` no longer silently swallows quantization failures — errors are logged before fallback removal.
+- **CRITICAL**: `USearchBackend.degrade()` now properly logs warnings and removes vectors rather than silently doing nothing before removal.
+- L2 interference checking (`forgetting_l2_interference.py`) now reads embeddings from `vec_chunks` when `vec_fallback` is empty, fixing a blind spot for sqlite-vec-only deployments.
+- API `/turn` endpoint (`server.py`) now resolves real `room_name`, `locus_name`, `vm_score`, and `age_hours` from the database instead of using hardcoded placeholder values.
+- LangGraph `alist()` async method now yields items as a proper async generator instead of returning a sync Iterator.
+- Removed trailing whitespace in `lumen/api/server.py` docstring.
+- Removed unused `os` import in `lumen/api/server.py`.
+- Replaced unused local variable assignments with `_` in `tests/test_beam.py` and `tests/test_core.py`.
+- Sorted and cleaned import blocks across multiple test files (auto-fixed by ruff).
+- Removed dead `pass` in `benchmarks/beir/run.py` except block.
+- Removed empty `if TYPE_CHECKING: pass` block in `lumen/curiosity.py`.
+- Fixed FTS5 lexical search failing on apostrophes, periods, and other punctuation characters in query strings (`retrieval_lexical.py`).
+
 ## [0.1.0] — 2026-07-20
 
 ### Added — Milestone 1 (Store & Retrieve)

@@ -56,13 +56,9 @@ def test_temporal_point_query_as_of_unix(memory_db):
     t_wed = int(datetime(2024, 1, 3, tzinfo=timezone.utc).timestamp())
 
     # Chunk valid Monday through Tuesday
-    cid_a = _insert_chunk(
-        memory_db, room_id, "Project alpha started", t_mon, t_tue
-    )
+    cid_a = _insert_chunk(memory_db, room_id, "Project alpha started", t_mon, t_tue)
     # Chunk valid Tuesday onwards (still valid)
-    cid_b = _insert_chunk(
-        memory_db, room_id, "Project alpha delayed", t_tue, None
-    )
+    cid_b = _insert_chunk(memory_db, room_id, "Project alpha delayed", t_tue, None)
     # Unrelated chunk, always valid
     _insert_chunk(memory_db, room_id, "Project beta is fine", t_mon, None)
 
@@ -110,21 +106,15 @@ def test_temporal_point_query_include_superseded(memory_db):
     t0 = 1000
     t1 = 2000
 
-    cid_v1 = _insert_chunk(
-        memory_db, room_id, "Decision: use Postgres", t0, t1
-    )
-    cid_v2 = _insert_chunk(
-        memory_db, room_id, "Decision: use SQLite", t1, None
-    )
+    cid_v1 = _insert_chunk(memory_db, room_id, "Decision: use Postgres", t0, t1)
+    cid_v2 = _insert_chunk(memory_db, room_id, "Decision: use SQLite", t1, None)
     memory_db.execute(
         "UPDATE chunk SET superseded_by = ? WHERE chunk_id = ?",
         (cid_v2, cid_v1),
     )
     memory_db.commit()
 
-    hits = temporal_point_query(
-        memory_db, ["Postgres"], as_of_unix=t0, include_superseded=True
-    )
+    hits = temporal_point_query(memory_db, ["Postgres"], as_of_unix=t0, include_superseded=True)
     assert len(hits) == 2
     assert hits[0].chunk_id == cid_v1
     assert hits[1].chunk_id == cid_v2

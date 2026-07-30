@@ -140,9 +140,7 @@ class _NoCloseConnection:
 
 
 def test_receive_stores_memory(memory_db, beam_config, monkeypatch):
-    monkeypatch.setattr(
-        "lumen.p2p.beam.get_connection", lambda cfg: _NoCloseConnection(memory_db)
-    )
+    monkeypatch.setattr("lumen.p2p.beam.get_connection", lambda cfg: _NoCloseConnection(memory_db))
 
     node = BeamNode(beam_config)
 
@@ -213,9 +211,10 @@ def test_zeroconf_missing():
     sys.modules["zeroconf"] = broken
 
     try:
-        from lumen.config import LumenConfig
         import lumen.p2p.beam as beam_module
-        node = beam_module.BeamNode(LumenConfig())
+        from lumen.config import LumenConfig
+
+        _ = beam_module.BeamNode(LumenConfig())
         pytest.fail("Expected RuntimeError on missing zeroconf")
     except RuntimeError as exc:
         assert "zeroconf is required" in str(exc)

@@ -11,11 +11,11 @@ import gc
 from pathlib import Path
 
 import psutil
-import structlog
 
 from lumen.config import LumenConfig
+from lumen.logging import get_console_logger
 
-logger = structlog.get_logger()
+logger = get_console_logger(__name__)
 
 
 def _get_n_threads() -> int:
@@ -34,8 +34,7 @@ def _get_llama_class() -> type:
     except Exception as exc:
         logger.warning("llama_cpp_not_installed")
         raise RuntimeError(
-            "llama-cpp-python is not installed. "
-            "Install it with: pip install llama-cpp-python"
+            "llama-cpp-python is not installed. Install it with: pip install llama-cpp-python"
         ) from exc
     return Llama
 

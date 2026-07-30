@@ -9,18 +9,10 @@ from __future__ import annotations
 
 import sqlite3
 import time
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    pass
+from lumen.logging import get_console_logger
 
-logger = None
-try:
-    import structlog
-
-    logger = structlog.get_logger()
-except Exception:
-    pass
+logger = get_console_logger(__name__)
 
 
 def curiosity_probe(conn: sqlite3.Connection, limit: int = 5) -> list[int]:

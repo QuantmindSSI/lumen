@@ -63,6 +63,7 @@ def serve(
     console.print(f"[bold green]Starting Lumen API server on {host}:{port}[/bold green]")
     uvicorn.run("lumen.api.server:app", host=host, port=port, log_level=log_level, reload=reload)
 
+
 console = Console()
 
 _state_tfc = TwinForceController()
@@ -75,7 +76,9 @@ def _ensure_conn(config: LumenConfig):
 @app.command()
 def init(
     device: str = typer.Option("generic", "--device", "-d"),
-    download_model: bool = typer.Option(False, "--download-model", help="Attempt to download the default embedding model"),
+    download_model: bool = typer.Option(
+        False, "--download-model", help="Attempt to download the default embedding model"
+    ),
 ):
     """Initialize Lumen palace for the given device profile."""
     config = LumenConfig(device=device)
@@ -97,9 +100,12 @@ def init(
         model_dir = config.model_path / config.embedding_model
         if not model_dir.exists():
             from lumen.cli.models import provision_embedding_model
+
             try:
                 provision_embedding_model(config.embedding_model, config.model_path)
-                console.print(f"[bold green]Model '{config.embedding_model}' downloaded.[/bold green]")
+                console.print(
+                    f"[bold green]Model '{config.embedding_model}' downloaded.[/bold green]"
+                )
             except Exception as exc:
                 console.print(f"[yellow]Model download failed: {exc}[/yellow]")
                 console.print(
@@ -139,7 +145,11 @@ def memory_store(
     content: str = typer.Argument(..., help="Content to store"),
     room: str = typer.Option(..., "--room", "-r"),
     locus: str = typer.Option(None, "--locus", "-l"),
-    allow_mock: bool = typer.Option(False, "--allow-mock", help="Allow deterministic mock embedder if model missing (testing only)"),
+    allow_mock: bool = typer.Option(
+        False,
+        "--allow-mock",
+        help="Allow deterministic mock embedder if model missing (testing only)",
+    ),
 ):
     """Store a memory through the full pipeline."""
     config = LumenConfig()
@@ -151,8 +161,7 @@ def memory_store(
         raise typer.Exit(1) from exc
     embedding = embedder.encode_single(content)
     chunk_id = store_memory(
-        conn, content, room_name=room, locus_name=locus,
-        embedding=embedding, config=config
+        conn, content, room_name=room, locus_name=locus, embedding=embedding, config=config
     )
     console.print(f"[bold green]Stored chunk_id={chunk_id} in room '{room}'[/bold green]")
 
@@ -161,7 +170,11 @@ def memory_store(
 def memory_retrieve(
     query: str = typer.Argument(..., help="Query to retrieve memories for"),
     top_k: int = typer.Option(5, "--top-k", "-k"),
-    allow_mock: bool = typer.Option(False, "--allow-mock", help="Allow deterministic mock embedder if model missing (testing only)"),
+    allow_mock: bool = typer.Option(
+        False,
+        "--allow-mock",
+        help="Allow deterministic mock embedder if model missing (testing only)",
+    ),
 ):
     """Run search pipeline and print top results."""
     config = LumenConfig()
@@ -185,8 +198,7 @@ def memory_retrieve(
     table.add_column("Content", max_width=60)
     for rank, rc in enumerate(results[:top_k], 1):
         table.add_row(
-            str(rank), rc.room_name, rc.locus_name,
-            f"{rc.final_score:.3f}", rc.content[:200]
+            str(rank), rc.room_name, rc.locus_name, f"{rc.final_score:.3f}", rc.content[:200]
         )
     console.print(table)
 
@@ -217,8 +229,7 @@ def palace_loci(room: str = typer.Argument(..., help="Room name")):
         raise typer.Exit(1)
     room_id = row[0]
     rows = conn.execute(
-        "SELECT locus_id, name, description FROM locus WHERE room_id = ? ORDER BY name",
-        (room_id,)
+        "SELECT locus_id, name, description FROM locus WHERE room_id = ? ORDER BY name", (room_id,)
     ).fetchall()
     table = Table(title=f"Loci in '{room}'")
     table.add_column("ID", style="cyan")
@@ -273,8 +284,7 @@ def compliance_audit(n: int = typer.Option(10, "--n")):
     table.add_column("Reason", style="yellow")
     for ev in events:
         table.add_row(
-            ev.get("ts", ""), ev.get("event", ""),
-            str(ev.get("chunk_id", "")), ev.get("reason", "")
+            ev.get("ts", ""), ev.get("event", ""), str(ev.get("chunk_id", "")), ev.get("reason", "")
         )
     console.print(table)
 
@@ -349,9 +359,7 @@ def p2p_share(
             await node.stop()
 
     asyncio.run(_share())
-    console.print(
-        f"[bold green]Shared room '{room}' with {len(node.peers)} peer(s)[/bold green]"
-    )
+    console.print(f"[bold green]Shared room '{room}' with {len(node.peers)} peer(s)[/bold green]")
 
 
 @p2p_app.command(name="discover")

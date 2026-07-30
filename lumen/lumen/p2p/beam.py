@@ -114,12 +114,8 @@ class BeamNode:
             properties=properties,
         )
         await self._azc.async_register_service(info)
-        self._browser = AsyncServiceBrowser(
-            self._azc.zeroconf, self.service_type, self
-        )
-        self._server = await asyncio.start_server(
-            self._handle_peer, "0.0.0.0", self.beam_port
-        )
+        self._browser = AsyncServiceBrowser(self._azc.zeroconf, self.service_type, self)
+        self._server = await asyncio.start_server(self._handle_peer, "0.0.0.0", self.beam_port)
 
     async def stop(self) -> None:
         """Unregister mDNS services and shut down the peer listener."""

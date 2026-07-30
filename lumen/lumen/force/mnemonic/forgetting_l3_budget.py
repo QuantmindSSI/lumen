@@ -12,19 +12,22 @@ from lumen.sovereign.wear import WearAwareBatcher
 
 try:
     import psutil
+
     _HAS_PSUTIL = True
 except Exception:
     _HAS_PSUTIL = False
 
-logger = None
-try:
-    import structlog
-    logger = structlog.get_logger()
-except Exception:
-    pass
+from lumen.logging import get_console_logger
+
+logger = get_console_logger(__name__)
 
 
-def budget_curated_eviction(conn: sqlite3.Connection, config, target_ram_mb: float | None = None, batcher: WearAwareBatcher | None = None):
+def budget_curated_eviction(
+    conn: sqlite3.Connection,
+    config,
+    target_ram_mb: float | None = None,
+    batcher: WearAwareBatcher | None = None,
+):
     """
     When resident memory footprint exceeds trigger, evict lowest V(m)/byte candidates.
     Eviction = optical degradation (FP32→FP16→INT8→BINARY→RELEASED).
@@ -55,12 +58,16 @@ def budget_curated_eviction(conn: sqlite3.Connection, config, target_ram_mb: flo
            FROM chunk
            WHERE valid_to IS NULL AND optical_level < 2
            ORDER BY (vm_score * (1.0 / (age_days + 1.0))) ASC
-           LIMIT ?""", (chunks_to_evict,)
+           LIMIT ?""",
+        (chunks_to_evict,),
     ).fetchall()
 
     evicted = 0
     if batcher:
-        tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        tables = {
+            r[0]
+            for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        }
         has_vec_fallback = "vec_fallback" in tables
         has_vec_chunks = "vec_chunks" in tables
         for chunk_id, _vm, res, _age in rows:
@@ -90,12 +97,12 @@ def budget_curated_eviction(conn: sqlite3.Connection, config, target_ram_mb: flo
             if new_res == "RELEASED":
                 conn.execute(
                     "UPDATE chunk SET optical_level = 2, valid_to = unixepoch() WHERE chunk_id = ?",
-                    (chunk_id,)
+                    (chunk_id,),
                 )
             else:
                 conn.execute(
                     "UPDATE chunk SET resolution = ?, optical_level = 1 WHERE chunk_id = ?",
-                    (new_res, chunk_id)
+                    (new_res, chunk_id),
                 )
             # Remove from vector index as resolution degraded
             try:
@@ -109,8 +116,12 @@ def budget_curated_eviction(conn: sqlite3.Connection, config, target_ram_mb: flo
             evicted += 1
 
     if logger:
-        logger.info("budget_eviction", evicted=evicted, triggered_at_mb=round(rss_mb, 1),
-                    target_mb=target_ram_mb)
+        logger.info(
+            "budget_eviction",
+            evicted=evicted,
+            triggered_at_mb=round(rss_mb, 1),
+            target_mb=target_ram_mb,
+        )
     return evicted
 
 

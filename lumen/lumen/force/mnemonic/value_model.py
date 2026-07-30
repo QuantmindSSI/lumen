@@ -10,12 +10,9 @@ import math
 
 import numpy as np
 
-logger = None
-try:
-    import structlog
-    logger = structlog.get_logger()
-except Exception:
-    pass
+from lumen.logging import get_console_logger
+
+logger = get_console_logger(__name__)
 
 # Default weights for cold-start user (untrained)
 DEFAULT_WEIGHTS = {
@@ -155,6 +152,7 @@ def learn_weights_from_feedback(
 ) -> dict[str, float]:
     """Learn per-user weights from click/retrieval-success feedback."""
     import sqlite3
+
     if not isinstance(conn, sqlite3.Connection):
         raise TypeError("conn must be sqlite3.Connection")
 
@@ -188,8 +186,7 @@ def learn_weights_from_feedback(
         return DEFAULT_WEIGHTS.copy()
 
     x0 = np.array([DEFAULT_WEIGHTS[k] for k in FACTOR_KEYS])
-    result = minimize(loss, x0, method="Nelder-Mead",
-                      bounds=[(0.01, 0.99)] * len(FACTOR_KEYS))
+    result = minimize(loss, x0, method="Nelder-Mead", bounds=[(0.01, 0.99)] * len(FACTOR_KEYS))
     learned = dict(zip(FACTOR_KEYS, result.x.tolist(), strict=True))
     s = sum(learned.values())
     if s == 0:

@@ -42,9 +42,7 @@ def tmp_config(tmp_path: Path):
 def test_group_similar_chunks_groups_by_hash(memory_db):
     """Chunks with identical content_hash should be grouped together."""
     memory_db.execute("INSERT INTO room(name) VALUES ('test_room')")
-    room_id = memory_db.execute(
-        "SELECT room_id FROM room WHERE name = 'test_room'"
-    ).fetchone()[0]
+    room_id = memory_db.execute("SELECT room_id FROM room WHERE name = 'test_room'").fetchone()[0]
 
     memory_db.execute(
         "INSERT INTO chunk(locus_id, room_id, content, content_hash, vm_score, valid_from) "
@@ -75,9 +73,7 @@ def test_dedup_merge_supersedes_losers(tmp_config):
     """Two valid chunks with identical hash should collapse to one winner."""
     conn = get_connection(tmp_config)
     conn.execute("INSERT INTO room(name) VALUES ('dedup_room')")
-    room_id = conn.execute(
-        "SELECT room_id FROM room WHERE name = 'dedup_room'"
-    ).fetchone()[0]
+    room_id = conn.execute("SELECT room_id FROM room WHERE name = 'dedup_room'").fetchone()[0]
 
     conn.execute(
         "INSERT INTO chunk(locus_id, room_id, content, content_hash, vm_score, valid_from) "
@@ -114,9 +110,7 @@ def test_narrative_generation_skipped_when_llm_unavailable(tmp_config):
     """If LocalLLM.is_available() is False, no narrative chunks should be created."""
     conn = get_connection(tmp_config)
     conn.execute("INSERT INTO room(name) VALUES ('narrative_room')")
-    room_id = conn.execute(
-        "SELECT room_id FROM room WHERE name = 'narrative_room'"
-    ).fetchone()[0]
+    room_id = conn.execute("SELECT room_id FROM room WHERE name = 'narrative_room'").fetchone()[0]
 
     for i in range(6):
         conn.execute(
@@ -149,9 +143,7 @@ def test_narrative_generation_when_llm_available(tmp_config):
     """If LocalLLM is available and >5 facts exist, a narrative should be stored."""
     conn = get_connection(tmp_config)
     conn.execute("INSERT INTO room(name) VALUES ('narrative_room')")
-    room_id = conn.execute(
-        "SELECT room_id FROM room WHERE name = 'narrative_room'"
-    ).fetchone()[0]
+    room_id = conn.execute("SELECT room_id FROM room WHERE name = 'narrative_room'").fetchone()[0]
 
     for i in range(6):
         conn.execute(
@@ -218,9 +210,7 @@ def test_get_rooms_with_new_activity(memory_db):
 def test_get_recent_fact_bullets(memory_db):
     """Fact bullets should be recent, valid, ordered by vm_score desc."""
     memory_db.execute("INSERT INTO room(name) VALUES ('bullet_room')")
-    room_id = memory_db.execute(
-        "SELECT room_id FROM room WHERE name = 'bullet_room'"
-    ).fetchone()[0]
+    room_id = memory_db.execute("SELECT room_id FROM room WHERE name = 'bullet_room'").fetchone()[0]
 
     facts = [
         ("high vm", "hash1", 0.9),
@@ -257,9 +247,7 @@ def test_event_buffer_drained_into_db(tmp_config):
     assert len(buf.query_since(0)) == 0  # buffer drained
 
     conn = get_connection(tmp_config)
-    rows = conn.execute(
-        "SELECT content FROM chunk ORDER BY chunk_id"
-    ).fetchall()
+    rows = conn.execute("SELECT content FROM chunk ORDER BY chunk_id").fetchall()
     contents = [r[0] for r in rows]
     assert "hello world" in contents
     assert "goodbye world" in contents
@@ -270,9 +258,7 @@ def test_no_circular_supersession(tmp_config):
     """A winner should never supersede itself."""
     conn = get_connection(tmp_config)
     conn.execute("INSERT INTO room(name) VALUES ('circle_room')")
-    room_id = conn.execute(
-        "SELECT room_id FROM room WHERE name = 'circle_room'"
-    ).fetchone()[0]
+    room_id = conn.execute("SELECT room_id FROM room WHERE name = 'circle_room'").fetchone()[0]
 
     conn.execute(
         "INSERT INTO chunk(locus_id, room_id, content, content_hash, vm_score, valid_from) "

@@ -23,13 +23,9 @@ if TYPE_CHECKING:
     from lumen.config import LumenConfig
     from lumen.force.mnemonic.event_buffer import EventMemoryBuffer
 
-logger = None
-try:
-    import structlog
+from lumen.logging import get_console_logger
 
-    logger = structlog.get_logger()
-except Exception:
-    pass
+logger = get_console_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -90,9 +86,7 @@ def _get_rooms_with_new_activity(
     return [(row["room_id"], row["name"]) for row in rows]
 
 
-def _get_recent_fact_bullets(
-    conn: sqlite3.Connection, room_id: int, days: int = 7
-) -> list[str]:
+def _get_recent_fact_bullets(conn: sqlite3.Connection, room_id: int, days: int = 7) -> list[str]:
     """Return recent chunk contents for a room, ordered by V(m) score.
 
     Args:

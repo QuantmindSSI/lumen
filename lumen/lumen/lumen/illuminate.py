@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import sqlite3
 from collections import Counter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 try:
     from rich.prompt import Confirm, Prompt
@@ -18,15 +18,11 @@ except Exception:
     Prompt = None  # type: ignore[misc,assignment]
 
 if TYPE_CHECKING:
-    pass
+    Prompt = Any  # type: ignore[misc,assignment]
 
-logger = None
-try:
-    import structlog
+from lumen.logging import get_console_logger
 
-    logger = structlog.get_logger()
-except Exception:
-    pass
+logger = get_console_logger(__name__)
 
 _NLP_CACHE = None
 

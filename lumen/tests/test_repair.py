@@ -183,7 +183,9 @@ def test_max_repair_attempts_zero(monkeypatch, memory_db, test_config, mock_embe
     assert tfc.state.a == 0.5
 
 
-def test_repair_returns_original_if_repair_also_empty(monkeypatch, memory_db, test_config, mock_embedder):
+def test_repair_returns_original_if_repair_also_empty(
+    monkeypatch, memory_db, test_config, mock_embedder
+):
     tfc = TwinForceController(TFCState(a=0.5))
     pipe = SearchPipeline(memory_db, test_config, tfc=tfc, embedder=mock_embedder)
 

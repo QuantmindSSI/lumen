@@ -7,13 +7,9 @@ Secret sauce: Controlled echo-location; γ decay prevents explosion
 
 from typing import Any
 
-logger = None
-try:
-    import structlog
+from lumen.logging import get_console_logger
 
-    logger = structlog.get_logger()
-except Exception:
-    pass
+logger = get_console_logger(__name__)
 
 SPREAD_GAMMA = 0.4
 
@@ -65,7 +61,7 @@ def spread_activation(
                 except (AttributeError, KeyError, TypeError):
                     weight = 1.0
 
-                activation = activations.get(node, 0.0) * (SPREAD_GAMMA ** hop) * weight
+                activation = activations.get(node, 0.0) * (SPREAD_GAMMA**hop) * weight
                 if activation > threshold:
                     activations[neighbor] = max(activations.get(neighbor, 0.0), activation)
                     next_frontier.add(neighbor)

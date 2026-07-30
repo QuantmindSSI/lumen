@@ -9,9 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
-import structlog
+from lumen.logging import get_console_logger
 
-logger = structlog.get_logger()
+logger = get_console_logger(__name__)
 
 
 class TokenCounter(Protocol):

@@ -9,14 +9,10 @@ import math
 import sqlite3
 from datetime import datetime, timezone
 
+from lumen.logging import get_console_logger
 from lumen.sovereign.wear import WearAwareBatcher
 
-logger = None
-try:
-    import structlog
-    logger = structlog.get_logger()
-except Exception:
-    pass
+logger = get_console_logger(__name__)
 
 
 def ebbinghaus_decay(
@@ -60,10 +56,16 @@ def ebbinghaus_decay(
 
     if batcher:
         for new_vm, chunk_id in updates:
-            batcher.queue.append(("UPDATE chunk SET vm_score = ? WHERE chunk_id = ?", (new_vm, chunk_id)))
+            batcher.queue.append(
+                ("UPDATE chunk SET vm_score = ? WHERE chunk_id = ?", (new_vm, chunk_id))
+            )
     else:
         conn.executemany("UPDATE chunk SET vm_score = ? WHERE chunk_id = ?", updates)
     if logger:
-        logger.info("decay_applied", chunks=len(updates), released=released,
-                    half_life_days=user_half_life_days)
+        logger.info(
+            "decay_applied",
+            chunks=len(updates),
+            released=released,
+            half_life_days=user_half_life_days,
+        )
     return released

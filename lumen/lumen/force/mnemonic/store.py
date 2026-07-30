@@ -14,25 +14,24 @@ import numpy as np
 
 from lumen.force.mnemonic.provenance import create_provenance
 from lumen.force.mnemonic.value_model import compute_vm
+from lumen.logging import get_console_logger
 from lumen.sovereign.wear import WearAwareBatcher
 
-logger = None
-try:
-    import structlog
-    logger = structlog.get_logger()
-except Exception:
-    pass
+logger = get_console_logger(__name__)
 
 
 def _get_lexical_channel(conn: sqlite3.Connection):
     from lumen.force.mnemonic.retrieval_lexical import LexicalChannel
+
     return LexicalChannel(conn)
 
 
 def _get_vector_channel(conn: sqlite3.Connection, config=None):
     from lumen.force.mnemonic.retrieval_dense import VectorChannel
+
     if config is None:
         from lumen.config import LumenConfig
+
         config = LumenConfig()
     return VectorChannel(config, conn)
 
@@ -74,8 +73,7 @@ def store_memory(
         row = conn.execute("SELECT room_id FROM room WHERE name = ?", (room_name,)).fetchone()
         if not row:
             cur = conn.execute(
-                "INSERT INTO room(name, room_type) VALUES (?, 'domain')",
-                (room_name,)
+                "INSERT INTO room(name, room_type) VALUES (?, 'domain')", (room_name,)
             )
             room_id = cur.lastrowid
         else:
@@ -85,7 +83,7 @@ def store_memory(
         content_hash = hashlib.sha256(content.encode()).hexdigest()
         existing = conn.execute(
             "SELECT chunk_id FROM chunk WHERE content_hash = ? AND valid_to IS NULL",
-            (content_hash,)
+            (content_hash,),
         ).fetchone()
         if existing:
             if logger:
@@ -103,8 +101,7 @@ def store_memory(
             """INSERT INTO chunk
                (locus_id, room_id, content, content_hash, vm_score, vm_factors, resolution)
                VALUES (?,?,?,?,?,?,?)""",
-            (locus_id, room_id, content, content_hash, vm_score,
-             json.dumps(vm_factors), "FP32")
+            (locus_id, room_id, content, content_hash, vm_score, json.dumps(vm_factors), "FP32"),
         )
         chunk_id = cur.lastrowid
 
@@ -123,34 +120,31 @@ def store_memory(
         _trigger_interference_check(conn, room_id, locus_id, chunk_id, embedding)
 
         if logger:
-            logger.info("memory_stored", chunk_id=chunk_id, room=room_name,
-                        locus=locus_name, vm=vm_score)
+            logger.info(
+                "memory_stored", chunk_id=chunk_id, room=room_name, locus=locus_name, vm=vm_score
+            )
         return chunk_id
 
 
 def _resolve_locus(conn, room_id, locus_name, embedding):
     if locus_name:
         row = conn.execute(
-            "SELECT locus_id FROM locus WHERE room_id=? AND name=?",
-            (room_id, locus_name)
+            "SELECT locus_id FROM locus WHERE room_id=? AND name=?", (room_id, locus_name)
         ).fetchone()
         if row:
             return row[0]
-        cur = conn.execute(
-            "INSERT INTO locus(room_id, name) VALUES (?,?)",
-            (room_id, locus_name)
-        )
+        cur = conn.execute("INSERT INTO locus(room_id, name) VALUES (?,?)", (room_id, locus_name))
         return cur.lastrowid
     # Auto-placement
     cur = conn.execute(
-        "INSERT INTO locus(room_id, name) VALUES (?,?)",
-        (room_id, f"auto_{uuid.uuid4().hex[:8]}")
+        "INSERT INTO locus(room_id, name) VALUES (?,?)", (room_id, f"auto_{uuid.uuid4().hex[:8]}")
     )
     return cur.lastrowid
 
 
 def _trigger_interference_check(conn, room_id, locus_id, new_chunk_id, embedding):
     from lumen.force.mnemonic.forgetting_l2_interference import check_locus_interference
+
     if embedding is not None:
         check_locus_interference(conn, room_id, locus_id, new_chunk_id, embedding)
 

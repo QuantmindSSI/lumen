@@ -12,18 +12,15 @@ from typing import Protocol
 
 import numpy as np
 
-logger = None
-try:
-    import structlog
-    logger = structlog.get_logger()
-except Exception:
-    pass
+from lumen.logging import get_console_logger
+
+logger = get_console_logger(__name__)
 
 
 @dataclass(frozen=True)
 class DenseHit:
     chunk_id: int
-    score: float      # FRQAD geodesic distance (lower = closer) or cosine (higher = closer)
+    score: float  # FRQAD geodesic distance (lower = closer) or cosine (higher = closer)
     vector: np.ndarray
 
 
@@ -43,6 +40,7 @@ class SqliteVecBackend:
         self._has_sqlite_vec = False
         try:
             import sqlite_vec
+
             self.conn.enable_load_extension(True)
             sqlite_vec.load(self.conn)
             self._has_sqlite_vec = True
@@ -70,15 +68,12 @@ class SqliteVecBackend:
         blob = vector.astype(np.float32).tobytes()
         self.conn.execute(
             "INSERT OR REPLACE INTO vec_fallback(chunk_id, embedding) VALUES (?,?)",
-            (chunk_id, blob)
+            (chunk_id, blob),
         )
         if self._has_sqlite_vec:
+            self.conn.execute("DELETE FROM vec_chunks WHERE chunk_id = ?", (chunk_id,))
             self.conn.execute(
-                "DELETE FROM vec_chunks WHERE chunk_id = ?", (chunk_id,)
-            )
-            self.conn.execute(
-                "INSERT INTO vec_chunks(chunk_id, embedding) VALUES (?,?)",
-                (chunk_id, blob)
+                "INSERT INTO vec_chunks(chunk_id, embedding) VALUES (?,?)", (chunk_id, blob)
             )
 
     def search(self, query_vector: np.ndarray, k: int) -> list[DenseHit]:
@@ -86,7 +81,7 @@ class SqliteVecBackend:
         if self._has_sqlite_vec:
             rows = self.conn.execute(
                 "SELECT chunk_id, distance FROM vec_chunks WHERE embedding MATCH ? ORDER BY distance LIMIT ?",
-                (blob, k)
+                (blob, k),
             ).fetchall()
             return [DenseHit(cid, 1.0 - (dist / 2.0), np.array([])) for cid, dist in rows]
         else:
@@ -110,13 +105,14 @@ class SqliteVecBackend:
         if self._has_sqlite_vec:
             self.conn.execute("DELETE FROM vec_chunks WHERE chunk_id = ?", (chunk_id,))
 
-    def degrade(self, chunk_id: int, new_resolution: str) -> None:
-        """Re-quantize the vector from FP32→FP16→INT8→BINARY.
+def degrade(self, chunk_id: int, new_resolution: str) -> None:
+        """Re-quantize the vector from FP32->FP16->INT8->BINARY.
 
         Falls back to removal if the quantizer is unavailable.
         """
         try:
             from lumen.sovereign.optical import QUANTIZERS
+
             if new_resolution in QUANTIZERS:
                 row = self.conn.execute(
                     "SELECT embedding FROM vec_fallback WHERE chunk_id = ?",
@@ -130,9 +126,18 @@ class SqliteVecBackend:
                         "UPDATE vec_fallback SET embedding = ? WHERE chunk_id = ?",
                         (blob, chunk_id),
                     )
+                    logger.info(
+                        "vector_degraded",
+                        chunk_id=chunk_id,
+                        resolution=new_resolution,
+                    )
                     return
         except Exception:
-            pass
+            logger.exception(
+                "vector_degrade_failed",
+                chunk_id=chunk_id,
+                resolution=new_resolution,
+            )
         self.remove(chunk_id)
 
 
@@ -191,12 +196,20 @@ class USearchBackend:
     def degrade(self, chunk_id: int, new_resolution: str) -> None:
         try:
             from lumen.sovereign.optical import QUANTIZERS
+
             if new_resolution in QUANTIZERS:
-                # Cannot efficiently extract a single vector from USearch.
-                # Fall through to full removal.
-                pass
+                logger.warning(
+                    "usearch_degrade_not_supported",
+                    chunk_id=chunk_id,
+                    resolution=new_resolution,
+                )
+                # USearch cannot efficiently extract a single vector.
+                # The L3 eviction caller should handle the chunk-table
+                # optical_level update.
+                self.remove(chunk_id)
+                return
         except Exception:
-            pass
+            logger.exception("usearch_degrade_failed", chunk_id=chunk_id)
         self.remove(chunk_id)
 
 
@@ -205,13 +218,22 @@ class VectorChannel:
 
     def __init__(self, config, conn: sqlite3.Connection):
         from lumen.config import LumenConfig
+
         cfg: LumenConfig = config
         if cfg.vector_index == "sqlite-vec":
             self.backend: VectorBackend = SqliteVecBackend(conn, cfg.embedding_dims)
         elif cfg.vector_index == "usearch":
-            self.backend = USearchBackend(cfg.store_path / "vectors.usearch", cfg.embedding_dims)
+            try:
+                self.backend = USearchBackend(cfg.store_path / "vectors.usearch", cfg.embedding_dims)
+            except Exception as exc:
+                logger.error(
+                    "usearch_unavailable_falling_back_to_brute_force",
+                    error=str(exc),
+                )
+                self.backend = FakeSqliteVecBackend(conn, cfg.embedding_dims)
         else:
             from lumen.brand.errors import RetrievalEmptyError
+
             raise RetrievalEmptyError(f"Unknown vector backend: {cfg.vector_index}")
 
     def add(self, chunk_id: int, vector: np.ndarray) -> None:

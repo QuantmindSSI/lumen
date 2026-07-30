@@ -11,12 +11,9 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-logger = None
-try:
-    import structlog
-    logger = structlog.get_logger()
-except Exception:
-    pass
+from lumen.logging import get_console_logger
+
+logger = get_console_logger(__name__)
 
 PII_PATTERNS = {
     "email": re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"),
@@ -64,7 +61,7 @@ def safety_forget_chunk(conn: sqlite3.Connection, chunk_id: int, reason: str) ->
         """UPDATE chunk
            SET valid_to = unixepoch(), content = '[REDACTED]', optical_level = 2
            WHERE chunk_id = ?""",
-        (chunk_id,)
+        (chunk_id,),
     )
 
     if logger:

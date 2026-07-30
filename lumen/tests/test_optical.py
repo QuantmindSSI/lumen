@@ -94,9 +94,7 @@ class TestDegradeChunkVector:
         backend.add.assert_called_once()
         call_args = backend.add.call_args
         assert call_args[0][0] == 7
-        np.testing.assert_array_equal(
-            call_args[0][1], quantize_int8(sample_vector)
-        )
+        np.testing.assert_array_equal(call_args[0][1], quantize_int8(sample_vector))
 
     def test_all_resolutions(self, sample_vector):
         for target in ("FP32", "FP16", "INT8", "BINARY"):

@@ -1,5 +1,5 @@
 """FastAPI server exposing Lumen memory operations.
- 
+
 Endpoints:
   POST /search      — semantic + lexical hybrid search
   POST /store       — store a memory chunk
@@ -15,14 +15,12 @@ Endpoints:
 
 from __future__ import annotations
 
-import os
 import sqlite3
 import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import structlog
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -35,12 +33,13 @@ from lumen.brand.errors import ModelNotAvailableError
 from lumen.config import LumenConfig
 from lumen.data.schema import ensure_schema, get_connection
 from lumen.force.contextual.embed import MockEmbedder, get_embedder
+from lumen.logging import get_console_logger
 from lumen.lumen.controller import TwinForceController
 from lumen.lumen.conversation import ConversationMemory
 from lumen.lumen.fusion import RetrievedChunk
 from lumen.lumen.search import SearchPipeline
 
-logger = structlog.get_logger()
+logger = get_console_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -59,7 +58,7 @@ app = FastAPI(
 )
 
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 app.add_middleware(
     CORSMiddleware,
@@ -78,15 +77,18 @@ _state: dict = {}
 # ---------------------------------------------------------------------------
 async def _auth_middleware(request: Request, call_next):
     public_paths = (
-        "/health", "/docs", "/redoc", "/openapi.json",
-        "/dashboard", "/dashboard-data", "/metrics",
+        "/health",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+        "/dashboard",
+        "/dashboard-data",
+        "/metrics",
     )
     if _config.api_key and request.url.path not in public_paths:
         provided = request.headers.get("X-API-Key") or request.query_params.get("api_key")
         if provided != _config.api_key:
-            return JSONResponse(
-                status_code=401, content={"detail": "Invalid or missing API key"}
-            )
+            return JSONResponse(status_code=401, content={"detail": "Invalid or missing API key"})
     request_id = str(uuid.uuid4())[:8]
     request.state.request_id = request_id
     response = await call_next(request)
@@ -110,19 +112,25 @@ class _SizeLimitMiddleware:
                     content_length = int(value)
                     break
             if content_length > self.max_bytes:
+
                 async def _send_413(msg):
                     if msg["type"] == "http.response.start":
                         msg["status"] = 413
                         await send(msg)
-                await send({
-                    "type": "http.response.start",
-                    "status": 413,
-                    "headers": [(b"content-type", b"application/json")],
-                })
-                await send({
-                    "type": "http.response.body",
-                    "body": b'{"detail":"Request body too large"}',
-                })
+
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": 413,
+                        "headers": [(b"content-type", b"application/json")],
+                    }
+                )
+                await send(
+                    {
+                        "type": "http.response.body",
+                        "body": b'{"detail":"Request body too large"}',
+                    }
+                )
                 return
         await self.app(scope, receive, send)
 
@@ -133,6 +141,7 @@ app.add_middleware(_SizeLimitMiddleware, max_bytes=_config.request_max_size_byte
 # ---------------------------------------------------------------------------
 # Request/response models
 # ---------------------------------------------------------------------------
+
 
 class SearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000, description="Search query string")
@@ -149,7 +158,9 @@ class StoreRequest(BaseModel):
     content: str = Field(..., min_length=1, max_length=50000)
     room: str = Field(..., min_length=1, max_length=128)
     locus: str | None = Field(None, max_length=128)
-    source_type: str = Field("user_input", pattern="^(user_input|agent_reasoning|consolidation|import|p2p_share)$")
+    source_type: str = Field(
+        "user_input", pattern="^(user_input|agent_reasoning|consolidation|import|p2p_share)$"
+    )
 
 
 class StoreResponse(BaseModel):
@@ -183,8 +194,8 @@ class TurnRequest(BaseModel):
 
 
 class TurnResponse(BaseModel):
-    user_chunk_id: int
-    assistant_chunk_id: int
+    user_chunk_id: int | None
+    assistant_chunk_id: int | None
     room: str
     feedback_logged_for: list[int]
 
@@ -193,8 +204,9 @@ class TurnResponse(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_config() -> LumenConfig:
-    return _state.get("config", _config)
+    return _state.get("config", _config)  # type: ignore[no-any-return]
 
 
 def _get_conn() -> sqlite3.Connection | None:
@@ -212,6 +224,7 @@ def _get_conversation_memory() -> ConversationMemory | None:
 # ---------------------------------------------------------------------------
 # Lifespan
 # ---------------------------------------------------------------------------
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -236,19 +249,22 @@ async def lifespan(app: FastAPI):
     conversation = ConversationMemory(config=_config, conn=conn, embedder=embedder)
     tfc = TwinForceController()
 
-    _state.update({
-        "config": _config,
-        "conn": conn,
-        "pipeline": pipeline,
-        "conversation": conversation,
-        "tfc": tfc,
-        "embedder": embedder,
-        "embedding_model_available": embedding_model_available,
-    })
+    _state.update(
+        {
+            "config": _config,
+            "conn": conn,
+            "pipeline": pipeline,
+            "conversation": conversation,
+            "tfc": tfc,
+            "embedder": embedder,
+            "embedding_model_available": embedding_model_available,
+        }
+    )
     logger.info("server_started", device=_config.device, model_available=embedding_model_available)
     yield
     conn.close()
     logger.info("server_stopped")
+
 
 app.router.lifespan_context = lifespan
 
@@ -256,6 +272,7 @@ app.router.lifespan_context = lifespan
 # ---------------------------------------------------------------------------
 # Error handler
 # ---------------------------------------------------------------------------
+
 
 @app.exception_handler(Exception)
 async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
@@ -270,6 +287,7 @@ async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSON
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @app.get("/health")
 async def health() -> dict:
@@ -319,9 +337,14 @@ async def search(request: Request, req: SearchRequest) -> SearchResponse:
             "vm_score": round(rc.vm_score, 4),
             "provenance_id": rc.provenance_id,
         }
-        for rc in results[:req.top_k]
+        for rc in results[: req.top_k]
     ]
-    logger.info("search_completed", query=req.query[:100], results=len(serialised), latency_ms=round(latency_ms, 2))
+    logger.info(
+        "search_completed",
+        query=req.query[:100],
+        results=len(serialised),
+        latency_ms=round(latency_ms, 2),
+    )
     return SearchResponse(query=req.query, results=serialised, latency_ms=round(latency_ms, 2))
 
 
@@ -394,20 +417,27 @@ async def turn(request: Request, req: TurnRequest) -> TurnResponse:
     stubs = []
     for cid in req.retrieved_chunk_ids:
         row = conn.execute(
-            "SELECT content FROM chunk WHERE chunk_id = ?", (cid,)
+            """SELECT c.content, r.name AS room_name, l.name AS locus_name,
+                      c.vm_score, c.provenance_root,
+                      (strftime('%s','now') - c.created_at) / 3600.0 AS age_hours
+               FROM chunk c
+               JOIN room r ON r.room_id = c.room_id
+               LEFT JOIN locus l ON l.locus_id = c.locus_id
+               WHERE c.chunk_id = ? AND c.valid_to IS NULL""",
+            (cid,),
         ).fetchone()
         if row:
             stubs.append(
                 RetrievedChunk(
                     chunk_id=cid,
-                    room_name="unknown",
-                    locus_name="none",
+                    room_name=row["room_name"] or "unknown",
+                    locus_name=row["locus_name"] or "none",
                     content=row["content"] or "",
-                    provenance_id=None,
+                    provenance_id=row["provenance_root"],
                     rrf_score=0.0,
-                    vm_score=0.0,
+                    vm_score=row["vm_score"] or 0.0,
                     frqad_score=0.0,
-                    recency_hours=0.0,
+                    recency_hours=row["age_hours"] or 0.0,
                     final_score=0.0,
                 )
             )
@@ -459,16 +489,16 @@ async def dashboard_data() -> dict:
         """
     ).fetchall()
 
-    total_chunks = conn.execute(
-        "SELECT COUNT(*) FROM chunk WHERE valid_to IS NULL"
-    ).fetchone()[0]
+    total_chunks = conn.execute("SELECT COUNT(*) FROM chunk WHERE valid_to IS NULL").fetchone()[0]
 
     # Estimate memory budget from config
     config = _get_config()
     budget_target_mb = getattr(config, "memory_budget_mb", 64)
     # Rough estimate: 2.8KB per chunk including embeddings
     estimated_mb = total_chunks * 2.8 / 1024
-    budget_pct = min(100, round((estimated_mb / budget_target_mb) * 100, 1)) if budget_target_mb else 0
+    budget_pct = (
+        min(100, round((estimated_mb / budget_target_mb) * 100, 1)) if budget_target_mb else 0
+    )
 
     # Determine degradation stage based on TFC resolution
     tfc = _state.get("tfc") or TwinForceController()
@@ -540,9 +570,7 @@ async def metrics() -> dict:
             "loci": locus_count,
             "active_chunks": chunk_count,
             "forgotten_chunks": forgotten,
-            "retention_rate_pct": round(
-                (chunk_count / max(1, chunk_count + forgotten)) * 100, 2
-            ),
+            "retention_rate_pct": round((chunk_count / max(1, chunk_count + forgotten)) * 100, 2),
         },
         "tfc": tfc.to_env(),
         "effectiveness": {

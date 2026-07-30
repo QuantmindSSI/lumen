@@ -8,13 +8,9 @@ Output wire: Brainstorm 9.5 temporal queries ("What happened last Tuesday?")
 import sqlite3
 from dataclasses import dataclass
 
-logger = None
-try:
-    import structlog
+from lumen.logging import get_console_logger
 
-    logger = structlog.get_logger()
-except Exception:
-    pass
+logger = get_console_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -63,9 +59,7 @@ def temporal_point_query(
         params.append(f"%{kw}%")
 
     if as_of_unix is not None:
-        time_clause = (
-            "chunk.valid_from <= ? AND (chunk.valid_to IS NULL OR chunk.valid_to > ?)"
-        )
+        time_clause = "chunk.valid_from <= ? AND (chunk.valid_to IS NULL OR chunk.valid_to > ?)"
         params.extend([as_of_unix, as_of_unix])
     else:
         time_clause = "chunk.valid_to IS NULL"
@@ -73,7 +67,7 @@ def temporal_point_query(
     sql = f"""
         SELECT chunk_id, content, valid_from, valid_to, superseded_by, provenance_root
         FROM chunk
-        WHERE ({' OR '.join(clauses)}) AND {time_clause}
+        WHERE ({" OR ".join(clauses)}) AND {time_clause}
         ORDER BY valid_from DESC
     """
 

@@ -17,19 +17,14 @@ from lumen.force.contextual.embed import get_embedder
 from lumen.force.mnemonic.retrieval_graph import GraphChannel
 from lumen.force.mnemonic.store import store_memory
 from lumen.force.mnemonic.value_model import DEFAULT_WEIGHTS, learn_weights_from_feedback
+from lumen.logging import get_console_logger
 from lumen.lumen.controller import TwinForceController
 from lumen.lumen.epistemic import EpistemicTracker
 from lumen.lumen.fusion import RetrievedChunk
 from lumen.lumen.goals import GoalTree
 from lumen.lumen.search import SearchPipeline
 
-logger = None
-try:
-    import structlog
-
-    logger = structlog.get_logger()
-except Exception:
-    pass
+logger = get_console_logger(__name__)
 
 
 @dataclass
@@ -93,6 +88,7 @@ class ConversationMemory:
                 self.embedder = get_embedder(self.config, allow_mock=False)
             except ModelNotAvailableError:
                 from lumen.force.contextual.embed import MockEmbedder
+
                 if logger:
                     logger.warning("conversation_using_mock_embedder")
                 self.embedder = MockEmbedder(dims=self.config.embedding_dims)

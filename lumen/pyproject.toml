@@ -75,6 +75,9 @@ dev = [
 langchain = [
     "langchain>=0.3",
 ]
+langgraph = [
+    "langgraph>=0.2",
+]
 mcp = [
     "mcp>=1.0",
 ]

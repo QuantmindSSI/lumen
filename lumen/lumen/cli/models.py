@@ -44,6 +44,7 @@ def _export_via_optimum(repo_id: str, dest: Path) -> Path:
     # Attempt 1: optimum-cli subprocess (fastest, handles caching)
     try:
         import subprocess
+
         subprocess.run(
             [
                 "optimum-cli",
@@ -82,8 +83,7 @@ def _export_via_optimum(repo_id: str, dest: Path) -> Path:
             return alt
     except Exception as exc:
         raise RuntimeError(
-            f"ONNX export failed for {repo_id}. "
-            "Install optimum[onnxruntime] and try again."
+            f"ONNX export failed for {repo_id}. Install optimum[onnxruntime] and try again."
         ) from exc
 
     raise RuntimeError(f"ONNX export succeeded but model.onnx not found in {dest}")

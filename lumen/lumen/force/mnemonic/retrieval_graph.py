@@ -7,12 +7,9 @@ Output wire: C2 (fusion engine)
 import sqlite3
 from dataclasses import dataclass
 
-logger = None
-try:
-    import structlog
-    logger = structlog.get_logger()
-except Exception:
-    pass
+from lumen.logging import get_console_logger
+
+logger = get_console_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -41,6 +38,7 @@ class GraphChannel:
         self._nx = None
         try:
             import networkx as nx
+
             self._nx = nx
             self._build_nx_graph()
         except Exception as exc:
@@ -84,7 +82,7 @@ class GraphChannel:
 
     def traverse_from_seed(self, seed_chunk_id: int, hops: int = 2) -> list[GraphHit]:
         """BFS traversal from seed with depth limit."""
-        if self._nx is not None and hasattr(self, '_graph'):
+        if self._nx is not None and hasattr(self, "_graph"):
             return self._traverse_nx(seed_chunk_id, hops)
         return self._traverse_sqlite(seed_chunk_id, hops)
 
@@ -136,7 +134,8 @@ class GraphChannel:
                 """SELECT p2.chunk_id
                     FROM provenance p1
                     JOIN provenance p2 ON p1.parent_provenance = p2.provenance_id
-                    WHERE p1.chunk_id = ?""", (node,)
+                    WHERE p1.chunk_id = ?""",
+                (node,),
             ).fetchall()
             neighbors.update(r[0] for r in prov_rows if r[0] is not None)
             for n in neighbors:

@@ -17,7 +17,7 @@ BENCHMARKS_DIR = Path(__file__).parent
 RESULTS_DIR = BENCHMARKS_DIR / "results"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-SUITES = ["retrieval", "forgetting", "perf"]
+SUITES = ["retrieval", "forgetting", "perf", "navigation", "e2e", "beir"]
 
 
 def run_suite(name: str) -> dict[str, Any]:
@@ -40,7 +40,7 @@ def run_suite(name: str) -> dict[str, Any]:
     data: dict[str, Any] = {"suite": name, "status": "unknown", "results": None}
     if result.returncode == 0 and json_path.exists():
         try:
-            with open(json_path, "r", encoding="utf-8") as f:
+            with open(json_path, encoding="utf-8") as f:
                 data["results"] = json.load(f)
             data["status"] = "success"
         except Exception as exc:
@@ -89,6 +89,36 @@ def generate_report(suite_results: list[dict[str, Any]]) -> Path:
                     f"DB={r.get('db_size_mb', 'N/A')}MB"
                 )
             key = "; ".join(metrics)
+        elif sr["suite"] == "navigation" and isinstance(res, dict):
+            summary = res.get("summary", {})
+            routing = summary.get("routing_and_pruning", {})
+            oracle_vs = summary.get("oracle_vs_global", {})
+            routed_vs = summary.get("routed_vs_global", {})
+            key = (
+                f"routing={routing.get('routing_accuracy', 'N/A'):.1%}, "
+                f"prune={routing.get('mean_pruning_ratio', 'N/A'):.1%}, "
+                f"oracle_speedup={oracle_vs.get('latency_speedup', {}).get('mean', 'N/A'):.2f}x, "
+                f"routed_speedup={routed_vs.get('latency_speedup', {}).get('mean', 'N/A'):.2f}x"
+            )
+        elif sr["suite"] == "e2e" and isinstance(res, dict):
+            agg = res.get("aggregate_metrics", {})
+            r10 = agg.get("recall_10", {})
+            sim = agg.get("semantic_similarity", {})
+            lat = agg.get("latency_ms", {})
+            key = (
+                f"R@10={r10.get('mean', 'N/A'):.4f}, "
+                f"sim={sim.get('mean', 'N/A'):.4f}, "
+                f"lat={lat.get('mean', 'N/A'):.1f}ms"
+            )
+        elif sr["suite"] == "beir" and isinstance(res, dict):
+            datasets = res.get("datasets", [])
+            results_list = res.get("results", [])
+            n_datasets = len(datasets)
+            key_parts = [f"{n_datasets} datasets"]
+            for dsr in results_list[:3]:
+                ds_name = dsr.get("dataset", "?")
+                key_parts.append(ds_name)
+            key = ", ".join(key_parts)
         else:
             key = "N/A"
 

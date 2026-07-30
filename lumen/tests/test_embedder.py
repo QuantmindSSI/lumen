@@ -97,10 +97,9 @@ class TestLocalEmbedder:
         )
         mock_session.run.return_value = [hidden]
 
-        with patch(
-            "transformers.AutoTokenizer.from_pretrained", return_value=mock_tokenizer
-        ), patch(
-            "onnxruntime.InferenceSession", return_value=mock_session
+        with (
+            patch("transformers.AutoTokenizer.from_pretrained", return_value=mock_tokenizer),
+            patch("onnxruntime.InferenceSession", return_value=mock_session),
         ):
             embedder = LocalEmbedder(bad_path, dims=4)
             # Manually set up return values for tokenizer call inside _encode_onnx

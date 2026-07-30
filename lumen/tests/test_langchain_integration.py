@@ -25,7 +25,9 @@ class TestLumenChatMemory:
     def test_retrieve_and_save(self, fresh_config):
         embedder = MockEmbedder(dims=fresh_config.embedding_dims)
         mem = LumenChatMemory(
-            config=fresh_config, user_id="alice", room="support",
+            config=fresh_config,
+            user_id="alice",
+            room="support",
             embedder=embedder,
         )
         ctx = mem.retrieve_context("hello")
@@ -37,11 +39,15 @@ class TestLumenChatMemory:
     def test_user_scoping(self, fresh_config):
         embedder = MockEmbedder(dims=fresh_config.embedding_dims)
         mem_alice = LumenChatMemory(
-            config=fresh_config, user_id="alice", room="test",
+            config=fresh_config,
+            user_id="alice",
+            room="test",
             embedder=embedder,
         )
         mem_bob = LumenChatMemory(
-            config=fresh_config, user_id="bob", room="test",
+            config=fresh_config,
+            user_id="bob",
+            room="test",
             embedder=embedder,
         )
         mem_alice.save_turn("alice msg", "alice reply")
@@ -56,7 +62,9 @@ class TestLumenChatMemory:
     def test_feedback_and_learn(self, fresh_config):
         embedder = MockEmbedder(dims=fresh_config.embedding_dims)
         mem = LumenChatMemory(
-            config=fresh_config, user_id="alice", room="test",
+            config=fresh_config,
+            user_id="alice",
+            room="test",
             embedder=embedder,
         )
         # Seed feedback
@@ -67,8 +75,7 @@ class TestLumenChatMemory:
         for i in range(12):
             emb = embedder.encode_single(f"fact {i}")
             cid = store_memory(
-                conn, f"fact {i}", room_name="test",
-                embedding=emb, config=fresh_config
+                conn, f"fact {i}", room_name="test", embedding=emb, config=fresh_config
             )
             mem.log_feedback(cid, was_useful=(i % 2 == 0))
 

@@ -13,13 +13,9 @@ import numpy as np
 from lumen.force.mnemonic.retrieval_dense import DenseHit
 from lumen.force.mnemonic.retrieval_graph import GraphHit
 from lumen.force.mnemonic.retrieval_lexical import LexicalHit
+from lumen.logging import get_console_logger
 
-logger = None
-try:
-    import structlog
-    logger = structlog.get_logger()
-except Exception:
-    pass
+logger = get_console_logger(__name__)
 
 
 @dataclass
@@ -54,12 +50,12 @@ def fuse_and_rerank(
     rrfs: dict[int, float] = {}
     for rank, hit in enumerate(lexical_hits, 1):
         rrfs[hit.chunk_id] = rrfs.get(hit.chunk_id, 0.0) + 1.0 / (k_rrf + rank)
-    for rank, hit in enumerate(dense_hits, 1):
-        rrfs[hit.chunk_id] = rrfs.get(hit.chunk_id, 0.0) + 1.0 / (k_rrf + rank)
+    for rank, dhit in enumerate(dense_hits, 1):
+        rrfs[dhit.chunk_id] = rrfs.get(dhit.chunk_id, 0.0) + 1.0 / (k_rrf + rank)
 
     if graph_hits:
-        for rank, hit in enumerate(graph_hits, 1):
-            rrfs[hit.chunk_id] = rrfs.get(hit.chunk_id, 0.0) + 1.0 / (k_rrf + rank) * 0.8
+        for rank, ghit in enumerate(graph_hits, 1):
+            rrfs[ghit.chunk_id] = rrfs.get(ghit.chunk_id, 0.0) + 1.0 / (k_rrf + rank) * 0.8
 
     chunk_ids = list(rrfs.keys())[:budget_candidates]
     if not chunk_ids:
@@ -71,7 +67,7 @@ def fuse_and_rerank(
                    (strftime('%s','now') - created_at) / 3600.0 AS age_hours,
                    resolution
             FROM chunk WHERE chunk_id IN ({placeholders}) AND valid_to IS NULL""",
-        chunk_ids
+        chunk_ids,
     ).fetchall()
 
     # Pre-fetch query embedding for FRQAD if provided
@@ -81,7 +77,9 @@ def fuse_and_rerank(
     for row in rows:
         cid, rid, lid, content, vm, prov, age_hours, res = row
         # Goal bonus
-        goal_bonus = 1.0 + (0.2 if any(kw.lower() in (content or "").lower() for kw in goal_tree_keywords) else 0.0)
+        goal_bonus = 1.0 + (
+            0.2 if any(kw.lower() in (content or "").lower() for kw in goal_tree_keywords) else 0.0
+        )
 
         # FRQAD / cosine rerank
         frqad_sim = 0.5
@@ -90,12 +88,14 @@ def fuse_and_rerank(
             if cand_vec is not None:
                 try:
                     from lumen.sovereign.frqad import compute_frqad
+
                     frqad = compute_frqad(query_vec, cand_vec, res or "FP32")
                     frqad_sim = 1.0 - (frqad / (np.pi / 2))
                 except Exception as exc:
                     if logger:
                         logger.debug("frqad_fallback_to_cosine", error=str(exc))
                     from scipy.spatial.distance import cosine
+
                     frqad_sim = 1.0 - cosine(query_vec, cand_vec)
             else:
                 frqad_sim = 0.5
@@ -114,17 +114,28 @@ def fuse_and_rerank(
             if loc_row:
                 locus_name = loc_row[0]
 
-        results.append(RetrievedChunk(
-            chunk_id=cid, room_name=room_name, locus_name=locus_name,
-            content=content, provenance_id=prov,
-            rrf_score=rrf, vm_score=vm, frqad_score=frqad_sim,
-            recency_hours=age_hours or 0.0, final_score=final
-        ))
+        results.append(
+            RetrievedChunk(
+                chunk_id=cid,
+                room_name=room_name,
+                locus_name=locus_name,
+                content=content,
+                provenance_id=prov,
+                rrf_score=rrf,
+                vm_score=vm,
+                frqad_score=frqad_sim,
+                recency_hours=age_hours or 0.0,
+                final_score=final,
+            )
+        )
 
     results.sort(key=lambda x: x.final_score, reverse=True)
     if logger:
-        logger.info("fusion_rerank", candidates=len(results),
-                    top_score=results[0].final_score if results else None)
+        logger.info(
+            "fusion_rerank",
+            candidates=len(results),
+            top_score=results[0].final_score if results else None,
+        )
     return results
 
 

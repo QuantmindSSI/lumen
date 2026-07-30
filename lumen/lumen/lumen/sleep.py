@@ -11,14 +11,9 @@ import psutil
 
 from lumen.config import LumenConfig
 from lumen.force.mnemonic.consolidation import run_consolidation_pass
+from lumen.logging import get_console_logger
 
-logger = None
-try:
-    import structlog
-
-    logger = structlog.get_logger()
-except Exception:
-    pass
+logger = get_console_logger(__name__)
 
 
 class SleepScheduler:

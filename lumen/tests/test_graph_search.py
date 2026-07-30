@@ -70,7 +70,9 @@ def test_graph_hits_score_boost(memory_db):
     assert rrf_with_graph > rrf_no_graph
 
 
-def test_search_pipeline_with_graph_boosts_results(monkeypatch, memory_db, test_config, mock_embedder):
+def test_search_pipeline_with_graph_boosts_results(
+    monkeypatch, memory_db, test_config, mock_embedder
+):
     _setup_db(memory_db)
 
     monkeypatch.setattr(

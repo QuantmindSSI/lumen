@@ -10,23 +10,23 @@ from lumen.config import LumenConfig
 from lumen.force.mnemonic.retrieval_dense import VectorChannel
 from lumen.force.mnemonic.retrieval_graph import GraphChannel
 from lumen.force.mnemonic.retrieval_lexical import LexicalChannel
+from lumen.logging import get_console_logger
 from lumen.lumen.controller import TwinForceController
 from lumen.lumen.fusion import RetrievedChunk, fuse_and_rerank
 from lumen.lumen.intent import IntentRouter
 
-logger = None
-try:
-    import structlog
-    logger = structlog.get_logger()
-except Exception:
-    pass
+logger = get_console_logger(__name__)
 
 
 class SearchPipeline:
-    def __init__(self, conn: sqlite3.Connection, config: LumenConfig,
-                 tfc: TwinForceController | None = None,
-                 embedder=None,
-                 graph: GraphChannel | None = None):
+    def __init__(
+        self,
+        conn: sqlite3.Connection,
+        config: LumenConfig,
+        tfc: TwinForceController | None = None,
+        embedder=None,
+        graph: GraphChannel | None = None,
+    ):
         self.conn = conn
         self.config = config
         self.tfc = tfc or TwinForceController()
@@ -37,6 +37,7 @@ class SearchPipeline:
             self.embedder = embedder
         else:
             from lumen.force.contextual.embed import get_embedder
+
             self.embedder = get_embedder(config, allow_mock=False)
         self.graph = graph
 
@@ -66,7 +67,8 @@ class SearchPipeline:
 
         # Stage 3: Fusion & rerank
         results = fuse_and_rerank(
-            lexical_hits, dense_hits,
+            lexical_hits,
+            dense_hits,
             goal_tree_keywords or [],
             self.conn,
             budget_candidates=200,
@@ -75,11 +77,13 @@ class SearchPipeline:
         )
 
         # Stage 4: TFC update
-        self.tfc.update({
-            "novelty": 0.5 if not results else 0.3,
-            "repetition": 0.0,
-            "context_pressure": 0.0,
-        })
+        self.tfc.update(
+            {
+                "novelty": 0.5 if not results else 0.3,
+                "repetition": 0.0,
+                "context_pressure": 0.0,
+            }
+        )
 
         # Stage 5: Repair loop
         if max_repair_attempts > 0:
@@ -99,7 +103,12 @@ class SearchPipeline:
 
         elapsed_ms = (time.perf_counter() - start) * 1000
         if logger:
-            logger.info("search_executed", query=query, intent=intent,
-                        results=len(results), latency_ms=round(elapsed_ms, 2))
+            logger.info(
+                "search_executed",
+                query=query,
+                intent=intent,
+                results=len(results),
+                latency_ms=round(elapsed_ms, 2),
+            )
 
         return results

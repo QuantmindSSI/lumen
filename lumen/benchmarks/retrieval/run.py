@@ -21,7 +21,6 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 
@@ -85,7 +84,7 @@ def _get_embedder(model_name):
         _embedder_result_names[model_name] = short
         print(f"[INFO] Using embedder: {model_name} ({dims} dims)")
         return e, model_name
-    except Exception as exc:
+    except Exception:
         # Fallback chain
         try:
             from lumen.force.contextual.embed import LocalEmbedder
@@ -100,7 +99,7 @@ def _get_embedder(model_name):
             pass
 
         from lumen.force.contextual.embed import MockEmbedder
-        print(f"[WARN] No real embedder — using MockEmbedder")
+        print("[WARN] No real embedder — using MockEmbedder")
         e = MockEmbedder(dims=EMBED_DIMS)
         _embedders[model_name] = e
         _embedder_result_names[model_name] = "mock"
@@ -113,7 +112,7 @@ def _get_embedder(model_name):
 
 def _generate_synthetic_corpus(seed: int):
     """Generate a deterministic synthetic corpus with keyword-overlap relevance."""
-    rng = np.random.default_rng(seed)
+    np.random.default_rng(seed)
 
     topics = [
         "machine learning", "deep learning", "neural networks",
@@ -192,7 +191,7 @@ def _load_ms_marco():
         count = 0
         for example in ds:
             pq = example["query"]
-            qtype = example.get("query_type")
+            example.get("query_type")
             answers = example.get("answers", [])
             passages_list = example.get("passages", {})
 
@@ -287,14 +286,14 @@ def _compute_metrics(retrieved_lists, relevant_sets, k_values):
         for k in k_values:
             metrics[f"recall_{k}"] = [
                 _recall_at_k(r, rel, k)
-                for r, rel in zip(retrieved_lists, relevant_sets)
+                for r, rel in zip(retrieved_lists, relevant_sets, strict=False)
             ]
             metrics[f"ndcg_{k}"] = [
                 _ndcg_at_k(r, rel, k)
-                for r, rel in zip(retrieved_lists, relevant_sets)
+                for r, rel in zip(retrieved_lists, relevant_sets, strict=False)
             ]
-        metrics["map"] = [_average_precision(r, rel) for r, rel in zip(retrieved_lists, relevant_sets)]
-        metrics["recip_rank"] = [_reciprocal_rank(r, rel) for r, rel in zip(retrieved_lists, relevant_sets)]
+        metrics["map"] = [_average_precision(r, rel) for r, rel in zip(retrieved_lists, relevant_sets, strict=False)]
+        metrics["recip_rank"] = [_reciprocal_rank(r, rel) for r, rel in zip(retrieved_lists, relevant_sets, strict=False)]
         return metrics
     except Exception:
         # Fallback: compute manually
@@ -302,14 +301,14 @@ def _compute_metrics(retrieved_lists, relevant_sets, k_values):
         for k in k_values:
             metrics[f"recall_{k}"] = [
                 _recall_at_k(r, rel, k)
-                for r, rel in zip(retrieved_lists, relevant_sets)
+                for r, rel in zip(retrieved_lists, relevant_sets, strict=False)
             ]
             metrics[f"ndcg_{k}"] = [
                 _ndcg_at_k(r, rel, k)
-                for r, rel in zip(retrieved_lists, relevant_sets)
+                for r, rel in zip(retrieved_lists, relevant_sets, strict=False)
             ]
-        metrics["map"] = [_average_precision(r, rel) for r, rel in zip(retrieved_lists, relevant_sets)]
-        metrics["recip_rank"] = [_reciprocal_rank(r, rel) for r, rel in zip(retrieved_lists, relevant_sets)]
+        metrics["map"] = [_average_precision(r, rel) for r, rel in zip(retrieved_lists, relevant_sets, strict=False)]
+        metrics["recip_rank"] = [_reciprocal_rank(r, rel) for r, rel in zip(retrieved_lists, relevant_sets, strict=False)]
         return metrics
 
 
@@ -369,6 +368,7 @@ def _bootstrap_ci(values, n_bootstrap=N_BOOTSTRAP):
 def _bm25_baseline(passages, queries, query_relevant_pids, k=50):
     """Independent rank-bm25 baseline, not using Lumen's FTS5 table."""
     import re
+
     from rank_bm25 import BM25Okapi
 
     tokenized = [re.findall(r'\w+', p.lower()) for p in passages]
@@ -410,7 +410,7 @@ def run_single_benchmark(seed, passages, queries, query_relevant_pids, corpus_na
         passage_embeddings = np.stack([embedder.encode_single(t) for t in passages], axis=0)
 
     pid_to_chunk_id = {}
-    for pid, (text, emb) in enumerate(zip(passages, passage_embeddings)):
+    for pid, (text, emb) in enumerate(zip(passages, passage_embeddings, strict=False)):
         chunk_id = store_memory(
             conn, content=text, room_name=f"benchmark_{seed}",
             embedding=emb, config=config,
@@ -554,7 +554,7 @@ def run_benchmark():
     print(f"\n[INFO] Results written to {json_path} and {md_path}")
 
     # Console summary
-    print(f"\n=== R@10 Summary ===")
+    print("\n=== R@10 Summary ===")
     for er in all_reports:
         print(f"\n  Embedder: {er['embedder']}:")
         for cfg in ["bm25_only", "dense_only", "hybrid"]:

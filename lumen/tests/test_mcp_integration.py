@@ -1,7 +1,6 @@
 """Tests for lumen.integrations.mcp_server."""
 
 import asyncio
-import os
 
 import pytest
 
@@ -10,7 +9,7 @@ pytestmark = pytest.mark.skipif(
     reason="mcp package not installed",
 )
 
-from lumen.integrations.mcp_server import mcp, app_lifespan  # noqa: E402
+from lumen.integrations.mcp_server import app_lifespan, mcp  # noqa: E402
 
 
 class TestMCPServer:

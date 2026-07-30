@@ -11,9 +11,6 @@ from __future__ import annotations
 
 import csv
 import json
-import math
-import os
-import sqlite3
 import sys
 import tempfile
 import time
@@ -118,8 +115,8 @@ def run_benchmark() -> dict[str, Any]:
         })
         return weakened
 
-    import lumen.force.mnemonic.store as store_module
     import lumen.force.mnemonic.forgetting_l2_interference as interference_module
+    import lumen.force.mnemonic.store as store_module
 
     # Monkey-patch the module-level function used by store._trigger_interference_check
     interference_module.check_locus_interference = _instrumented_interference
@@ -128,7 +125,7 @@ def run_benchmark() -> dict[str, Any]:
     locus_names = [f"locus_{i % 100}" for i in range(NUM_CHUNKS)]
     start_real = time.perf_counter()
     chunk_ids: list[int] = []
-    for i, (text, emb, vm) in enumerate(zip(texts, embeddings, vm_scores)):
+    for i, (text, emb, vm) in enumerate(zip(texts, embeddings, vm_scores, strict=False)):
         chunk_id = store_memory(
             conn,
             content=text,
@@ -152,7 +149,7 @@ def run_benchmark() -> dict[str, Any]:
     # Spread created_at across 90 days for realistic age distribution
     base_unix = int(datetime(2024, 1, 1, tzinfo=timezone.utc).timestamp())
     ages_days = rng.integers(0, SIMULATED_DAYS, size=NUM_CHUNKS)
-    for cid, days in zip(chunk_ids, ages_days):
+    for cid, days in zip(chunk_ids, ages_days, strict=False):
         # created_at must be in the past relative to simulation start to avoid
         # negative age_sec in ebbinghaus_decay.
         created = int(base_unix) - int(days) * 86400 - int(rng.integers(0, 86400))
@@ -166,7 +163,7 @@ def run_benchmark() -> dict[str, Any]:
     # Interference precision audit
     # -----------------------------------------------------------------------
     # Map chunk_id -> embedding index
-    cid_to_emb = {cid: emb for cid, emb in zip(chunk_ids, embeddings)}
+    cid_to_emb = dict(zip(chunk_ids, embeddings, strict=False))
 
     # For each locus, compute true high-sim pairs vs actual weakenings
     locus_chunks: dict[int, list[tuple[int, np.ndarray, float]]] = {}
@@ -177,8 +174,6 @@ def run_benchmark() -> dict[str, Any]:
         locus_chunks.setdefault(lid, []).append((cid, cid_to_emb[cid], vm))
 
     true_high_sim = 0
-    actual_weakened = 0
-    correct_weakened = 0
     for lid, chunks in locus_chunks.items():
         if len(chunks) < 2:
             continue
@@ -196,7 +191,6 @@ def run_benchmark() -> dict[str, Any]:
                     # from the log for this locus.
 
     # Re-compute from log: count unique weakened pairs
-    weakened_pairs = set()
     for entry in interference_log:
         if entry["weakened"] > 0:
             # We don't know exact old chunk from the log, but we know new_chunk_id

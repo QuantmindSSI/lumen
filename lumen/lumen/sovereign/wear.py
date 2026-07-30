@@ -10,12 +10,9 @@ import contextlib
 import sqlite3
 from collections import deque
 
-logger = None
-try:
-    import structlog
-    logger = structlog.get_logger()
-except Exception:
-    pass
+from lumen.logging import get_console_logger
+
+logger = get_console_logger(__name__)
 
 
 class WearAwareBatcher:
@@ -24,8 +21,9 @@ class WearAwareBatcher:
     Target: write amplification < 1.1x vs naive per-query writes.
     """
 
-    def __init__(self, conn: sqlite3.Connection, max_batch_size: int = 100,
-                 max_latency_ms: float = 500):
+    def __init__(
+        self, conn: sqlite3.Connection, max_batch_size: int = 100, max_latency_ms: float = 500
+    ):
         self.conn = conn
         self.queue: deque[tuple[str, tuple]] = deque()
         self.max_batch = max_batch_size

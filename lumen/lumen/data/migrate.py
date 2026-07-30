@@ -8,12 +8,9 @@ Current version = 1.
 import sqlite3
 from pathlib import Path
 
-logger = None
-try:
-    import structlog
-    logger = structlog.get_logger()
-except Exception:
-    pass
+from lumen.logging import get_console_logger
+
+logger = get_console_logger(__name__)
 
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 CURRENT_SCHEMA_VERSION = 1

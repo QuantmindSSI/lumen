@@ -1,6 +1,5 @@
 """Tests for lumen.force.contextual.token_budget."""
 
-
 from lumen.force.contextual.token_budget import (
     CharHeuristicCounter,
     get_token_counter,

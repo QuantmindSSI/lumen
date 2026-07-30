@@ -27,8 +27,7 @@ import sqlite3
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-
-import structlog
+from pathlib import Path
 
 try:
     from mcp.server.fastmcp import Context, FastMCP
@@ -44,11 +43,12 @@ from lumen.config import LumenConfig
 from lumen.data.schema import ensure_schema, get_connection
 from lumen.force.contextual.embed import MockEmbedder, get_embedder
 from lumen.force.mnemonic.store import store_memory
+from lumen.logging import get_console_logger
 from lumen.lumen.controller import TwinForceController
 from lumen.lumen.conversation import ConversationMemory
 from lumen.lumen.search import SearchPipeline
 
-logger = structlog.get_logger()
+logger = get_console_logger(__name__)
 
 if not _MCP_AVAILABLE:
     raise ImportError(
@@ -59,6 +59,7 @@ if not _MCP_AVAILABLE:
 # ---------------------------------------------------------------------------
 # App lifecycle
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LumenAppState:
@@ -126,6 +127,7 @@ mcp = FastMCP("lumen-memory", lifespan=app_lifespan)
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _state(ctx: Context | None = None) -> LumenAppState:
     if ctx is not None:
         try:
@@ -140,6 +142,7 @@ def _state(ctx: Context | None = None) -> LumenAppState:
 # ---------------------------------------------------------------------------
 # Tools
 # ---------------------------------------------------------------------------
+
 
 @mcp.tool()
 async def lumen_search(query: str, top_k: int = 5, ctx: Context = None) -> str:
@@ -232,8 +235,7 @@ async def lumen_turn(
         room_name=room,
     )
     return (
-        f"Turn stored: user_chunk_id={user_id}, assistant_chunk_id={assistant_id} "
-        f"in room '{room}'."
+        f"Turn stored: user_chunk_id={user_id}, assistant_chunk_id={assistant_id} in room '{room}'."
     )
 
 
@@ -291,7 +293,11 @@ async def lumen_dashboard(ctx: Context = None) -> str:
     metrics = _dashboard_metrics(state)
     m = metrics
 
-    room_lines = "  " + ", ".join(f"{r['name']}({r['chunks']})" for r in m["palace"]["topology"]) if m["palace"]["topology"] else "  (none)"
+    room_lines = (
+        "  " + ", ".join(f"{r['name']}({r['chunks']})" for r in m["palace"]["topology"])
+        if m["palace"]["topology"]
+        else "  (none)"
+    )
 
     return (
         f"╔══════════════════════════════════════════════╗\n"
@@ -368,19 +374,78 @@ async def lumen_dashboard(ctx: Context = None) -> str:
 # Resources (exposed as MCP resources visible in OpenCode workspace)
 # ---------------------------------------------------------------------------
 
+
+def _load_retrieval_benchmarks() -> dict:
+    """Load retrieval metrics from benchmark result files if available."""
+    benchmarks = {
+        "bm25_r10_beir": 0.49,
+        "hybrid_r10_bge": 0.482,
+        "dense_r10_minilm": 0.146,
+        "ndcg10": 1.0,
+        "latency_bm25_ms": 1.3,
+        "latency_dense_ms": 43,
+        "latency_hybrid_ms": 54,
+    }
+    # Try to load actual benchmark results
+    candidates = [
+        Path(__file__).resolve().parent.parent.parent / "benchmarks" / "retrieval" / "results" / "retrieval_results.json",
+        Path("benchmarks/retrieval/results/retrieval_results.json"),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            try:
+                data = json.loads(candidate.read_text(encoding="utf-8"))
+                embedders = data.get("embedders", [])
+                if embedders:
+                    bge_emb = next((e for e in embedders if "BGE" in e.get("embedder_full", "").upper()), embedders[0])
+                    minilm_emb = next((e for e in embedders if "MiniLM" in e.get("embedder_full", "")), None)
+                    res = bge_emb.get("results", {})
+                    hybrid = res.get("hybrid", {})
+                    dense = res.get("dense_only", {})
+                    bm25 = res.get("bm25_only", {})
+
+                    r10 = hybrid.get("recall_10", {})
+                    if r10.get("mean"):
+                        benchmarks["hybrid_r10_bge"] = round(r10["mean"], 3)
+
+                    if minilm_emb:
+                        minilm_res = minilm_emb.get("results", {}).get("dense_only", {})
+                        minilm_r10 = minilm_res.get("recall_10", {})
+                        if minilm_r10.get("mean"):
+                            benchmarks["dense_r10_minilm"] = round(minilm_r10["mean"], 3)
+
+                    br10 = bm25.get("recall_10", {})
+                    if br10.get("mean"):
+                        benchmarks["bm25_r10_beir"] = round(br10["mean"], 3)
+
+                    nd = hybrid.get("ndcg_10", {})
+                    if nd.get("mean"):
+                        benchmarks["ndcg10"] = round(nd["mean"], 3)
+
+                    lat_hyb = hybrid.get("latency_ms", {})
+                    if isinstance(lat_hyb, dict):
+                        benchmarks["latency_hybrid_ms"] = round(lat_hyb.get("mean", lat_hyb.get("latency_ms", 54)), 1)
+                    if isinstance(lat_hyb, list):
+                        import numpy as np
+                        benchmarks["latency_hybrid_ms"] = round(float(np.mean(lat_hyb)), 1)
+                        benchmarks["latency_dense_ms"] = round(float(np.mean(dense.get("latency_ms", [43]))), 1)
+                        benchmarks["latency_bm25_ms"] = round(float(np.mean(bm25.get("latency_ms", [1.3]))), 1)
+                    break
+            except Exception:
+                pass
+    return benchmarks
+
+
 def _dashboard_metrics(state: LumenAppState) -> dict:
     """Build dashboard metrics dict used by resources and tools."""
+
     conn = state.conn
     env = state.tfc.to_env()
 
     room_count = conn.execute("SELECT COUNT(*) FROM room").fetchone()[0]
-    chunk_count = conn.execute(
-        "SELECT COUNT(*) FROM chunk WHERE valid_to IS NULL"
-    ).fetchone()[0]
+    chunk_count = conn.execute("SELECT COUNT(*) FROM chunk WHERE valid_to IS NULL").fetchone()[0]
     locus_count = conn.execute("SELECT COUNT(*) FROM locus").fetchone()[0]
-    forgotten = conn.execute(
-        "SELECT COUNT(*) FROM chunk WHERE valid_to IS NOT NULL"
-    ).fetchone()[0]
+    forgotten = conn.execute("SELECT COUNT(*) FROM chunk WHERE valid_to IS NOT NULL").fetchone()[0]
 
     feedback_row = conn.execute(
         "SELECT COUNT(*) AS c, AVG(CASE WHEN positive = 1 THEN 1.0 ELSE 0.0 END) AS sat FROM feedback_log"
@@ -422,16 +487,8 @@ def _dashboard_metrics(state: LumenAppState) -> dict:
             "r": env["r"],
             "degradation_stage": degradation_stage,
         },
-        "retrieval": {
-            "bm25_r10_beir": 0.49,
-            "hybrid_r10_bge": 0.482,
-            "dense_r10_minilm": 0.146,
-            "ndcg10": 1.0,
-            "latency_bm25_ms": 1.3,
-            "latency_dense_ms": 43,
-            "latency_hybrid_ms": 54,
-        },
-        "business": {
+        "retrieval": _load_retrieval_benchmarks(),
+"business": {
             "cost_per_query_usd": 0.0,
             "data_sovereignty_pct": 100,
             "gdpr_native_rtbf": True,
@@ -472,16 +529,21 @@ async def dashboard_sota(ctx: Context = None) -> str:
     """
     state = _state(ctx)
     metrics = _dashboard_metrics(state)
-    return json.dumps({
-        "sota_comparison": metrics["sota_comparison"],
-        "retrieval": metrics["retrieval"],
-        "business": metrics["business"],
-    }, indent=2, default=str)
+    return json.dumps(
+        {
+            "sota_comparison": metrics["sota_comparison"],
+            "retrieval": metrics["retrieval"],
+            "business": metrics["business"],
+        },
+        indent=2,
+        default=str,
+    )
 
 
 # ---------------------------------------------------------------------------
 # Entrypoint
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     mcp.run(transport="stdio")

@@ -12,12 +12,10 @@ Seeds: 3 (bootstrap 95% CI)
 from __future__ import annotations
 
 import json
-import math
 import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 
@@ -28,9 +26,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from lumen.config import LumenConfig
 from lumen.data.schema import get_connection
 from lumen.force.mnemonic.retrieval_dense import VectorChannel
-from lumen.force.mnemonic.retrieval_lexical import LexicalChannel
 from lumen.force.mnemonic.store import store_memory
-from lumen.lumen.search import SearchPipeline
 
 SEEDS = [42, 123]
 CORPUS_SIZES = [1_000, 5_000, 10_000]
@@ -68,7 +64,7 @@ def _get_embedder():
 # Synthetic corpus
 # ---------------------------------------------------------------------------
 def _generate_corpus(size, seed):
-    rng = np.random.default_rng(seed)
+    np.random.default_rng(seed)
     topics = ["machine learning", "deep learning", "nlp", "cv", "rl", "robotics",
               "quantum computing", "cloud", "security", "blockchain"]
     templates = [
@@ -101,7 +97,7 @@ def _recall_at_k(retrieved, relevant, k):
     return len(set(retrieved[:k]) & relevant) / len(relevant)
 
 def _compute_all(retrieved_lists, relevant_sets, k=TOP_K):
-    recalls = [_recall_at_k(r, rel, k) for r, rel in zip(retrieved_lists, relevant_sets)]
+    recalls = [_recall_at_k(r, rel, k) for r, rel in zip(retrieved_lists, relevant_sets, strict=False)]
     return {"recall": np.mean(recalls)}
 
 def _bootstrap_ci(values):
@@ -124,7 +120,7 @@ def _bench_lumen(docs, queries, relevant, seed):
     t0 = time.perf_counter()
     embs = embedder.encode(docs)
     pid_to_cid = {}
-    for pid, (text, emb) in enumerate(zip(docs, embs)):
+    for pid, (text, emb) in enumerate(zip(docs, embs, strict=False)):
         cid = store_memory(conn, content=text, room_name="bench", embedding=emb, config=config)
         pid_to_cid[pid] = cid
     conn.commit()

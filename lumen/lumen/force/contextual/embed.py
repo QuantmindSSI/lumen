@@ -13,14 +13,9 @@ from pathlib import Path
 import numpy as np
 
 from lumen.brand.errors import ModelNotAvailableError
+from lumen.logging import get_console_logger
 
-logger = None
-try:
-    import structlog
-
-    logger = structlog.get_logger()
-except Exception:
-    pass
+logger = get_console_logger(__name__)
 
 
 class LocalEmbedder:
@@ -59,9 +54,7 @@ class LocalEmbedder:
                     raise FileNotFoundError(
                         f"ONNX model not found at {self.model_path / 'model.onnx'}"
                     )
-            self.session = ort.InferenceSession(
-                str(model_file), providers=["CPUExecutionProvider"]
-            )
+            self.session = ort.InferenceSession(str(model_file), providers=["CPUExecutionProvider"])
         except Exception as exc:
             raise ModelNotAvailableError(str(self.model_path)) from exc
 

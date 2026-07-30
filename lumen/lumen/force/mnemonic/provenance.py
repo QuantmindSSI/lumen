@@ -8,12 +8,9 @@ Secret sauce: Engram-inspired bi-temporal model + supersession chains
 import sqlite3
 from dataclasses import dataclass
 
-logger = None
-try:
-    import structlog
-    logger = structlog.get_logger()
-except Exception:
-    pass
+from lumen.logging import get_console_logger
+
+logger = get_console_logger(__name__)
 
 
 @dataclass
@@ -41,19 +38,22 @@ def create_provenance(
         """INSERT INTO provenance
            (chunk_id, source_type, source_ref, confidence, extraction_method, parent_provenance)
            VALUES (?,?,?,?,?,?)""",
-        (chunk_id, source_type, source_ref, confidence, extraction_method, parent_provenance)
+        (chunk_id, source_type, source_ref, confidence, extraction_method, parent_provenance),
     )
     prov_id = cur.lastrowid
     if logger:
-        logger.info("provenance_created", chunk_id=chunk_id, prov_id=prov_id,
-                    source_type=source_type, parent=parent_provenance)
+        logger.info(
+            "provenance_created",
+            chunk_id=chunk_id,
+            prov_id=prov_id,
+            source_type=source_type,
+            parent=parent_provenance,
+        )
     return prov_id
 
 
 def get_effective_fact(
-    conn: sqlite3.Connection,
-    content_hash_prefix: str,
-    as_of_transaction: int | None = None
+    conn: sqlite3.Connection, content_hash_prefix: str, as_of_transaction: int | None = None
 ) -> dict | None:
     """
     Engram merge-on-read: find the currently valid version of a fact,
@@ -70,7 +70,9 @@ def get_effective_fact(
             ORDER BY c.created_at DESC
             LIMIT 1
         """
-        row = conn.execute(sql, (content_hash_prefix, as_of_transaction, as_of_transaction)).fetchone()
+        row = conn.execute(
+            sql, (content_hash_prefix, as_of_transaction, as_of_transaction)
+        ).fetchone()
     else:
         sql = """
             SELECT c.*, p.source_type, p.confidence
@@ -89,7 +91,7 @@ def supersede_chunk(conn: sqlite3.Connection, old_chunk_id: int, new_chunk_id: i
     """Logical update: old fact is deprecated, new fact carries the chain."""
     conn.execute(
         "UPDATE chunk SET valid_to = unixepoch(), superseded_by = ? WHERE chunk_id = ?",
-        (new_chunk_id, old_chunk_id)
+        (new_chunk_id, old_chunk_id),
     )
     if logger:
         logger.info("chunk_superseded", old=old_chunk_id, new=new_chunk_id)

@@ -80,7 +80,7 @@ class LumenConfig(BaseSettings):
         if self._resolved:
             return
         profile = DEVICE_PROFILES.get(self.device, DEVICE_PROFILES["generic"])
-        self.context_budget = int(profile.get("context_budget", self.context_budget))
-        self.memory_limit_mb = int(profile.get("memory_limit_mb", self.memory_limit_mb))
-        self.vector_index = str(profile.get("vector_index", self.vector_index))
+        self.context_budget = int(profile.get("context_budget", self.context_budget))  # type: ignore[call-overload]
+        self.memory_limit_mb = int(profile.get("memory_limit_mb", self.memory_limit_mb))  # type: ignore[call-overload]
+        self.vector_index = str(profile.get("vector_index", self.vector_index))  # type: ignore[assignment]
         self._resolved = True

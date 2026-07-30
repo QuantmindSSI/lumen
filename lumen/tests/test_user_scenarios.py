@@ -63,8 +63,12 @@ class TestUserStoryDailyLogging:
         for content, room, locus in memories:
             emb = embedder.encode_single(content)
             store_memory(
-                fresh_conn, content, room_name=room.strip(),
-                locus_name=locus, embedding=emb, config=fresh_config,
+                fresh_conn,
+                content,
+                room_name=room.strip(),
+                locus_name=locus,
+                embedding=emb,
+                config=fresh_config,
             )
 
         pipeline = SearchPipeline(fresh_conn, fresh_config, embedder=embedder)
@@ -74,27 +78,43 @@ class TestUserStoryDailyLogging:
 
     def test_palace_map_reflects_rooms_and_loci(self, fresh_conn, fresh_config, embedder):
         store_memory(
-            fresh_conn, "Book flight to Tokyo", room_name="travel",
-            locus_name="planning", embedding=embedder.encode_single("tokyo flight"),
+            fresh_conn,
+            "Book flight to Tokyo",
+            room_name="travel",
+            locus_name="planning",
+            embedding=embedder.encode_single("tokyo flight"),
             config=fresh_config,
         )
-        rooms = [tuple(r) for r in fresh_conn.execute("SELECT name FROM room ORDER BY name").fetchall()]
+        rooms = [
+            tuple(r) for r in fresh_conn.execute("SELECT name FROM room ORDER BY name").fetchall()
+        ]
         assert ("travel",) in rooms
-        loci = [tuple(r) for r in fresh_conn.execute(
-            "SELECT name FROM locus WHERE room_id = (SELECT room_id FROM room WHERE name = 'travel')"
-        ).fetchall()]
+        loci = [
+            tuple(r)
+            for r in fresh_conn.execute(
+                "SELECT name FROM locus WHERE room_id = (SELECT room_id FROM room WHERE name = 'travel')"
+            ).fetchall()
+        ]
         assert ("planning",) in loci
 
     def test_duplicate_content_is_deduplicated(self, fresh_conn, fresh_config, embedder):
         content = "Remember to water the plants"
         emb = embedder.encode_single(content)
         cid1 = store_memory(
-            fresh_conn, content, room_name="home", locus_name="chores",
-            embedding=emb, config=fresh_config,
+            fresh_conn,
+            content,
+            room_name="home",
+            locus_name="chores",
+            embedding=emb,
+            config=fresh_config,
         )
         cid2 = store_memory(
-            fresh_conn, content, room_name="home", locus_name="chores",
-            embedding=emb, config=fresh_config,
+            fresh_conn,
+            content,
+            room_name="home",
+            locus_name="chores",
+            embedding=emb,
+            config=fresh_config,
         )
         assert cid1 == cid2
 
@@ -111,16 +131,24 @@ class TestUserStoryMemoryInterference:
         emb_b = emb_b / np.linalg.norm(emb_b)
 
         cid_a = store_memory(
-            fresh_conn, content_a, room_name="tech", locus_name="protocols",
-            embedding=emb_a, config=fresh_config,
+            fresh_conn,
+            content_a,
+            room_name="tech",
+            locus_name="protocols",
+            embedding=emb_a,
+            config=fresh_config,
         )
         vm_before = fresh_conn.execute(
             "SELECT vm_score FROM chunk WHERE chunk_id = ?", (cid_a,)
         ).fetchone()[0]
 
         store_memory(
-            fresh_conn, content_b, room_name="tech", locus_name="protocols",
-            embedding=emb_b, config=fresh_config,
+            fresh_conn,
+            content_b,
+            room_name="tech",
+            locus_name="protocols",
+            embedding=emb_b,
+            config=fresh_config,
         )
         vm_after = fresh_conn.execute(
             "SELECT vm_score FROM chunk WHERE chunk_id = ?", (cid_a,)
@@ -135,16 +163,24 @@ class TestUserStoryMemoryInterference:
         emb_b = embedder.encode_single(content_b)
 
         cid_a = store_memory(
-            fresh_conn, content_a, room_name="notes", locus_name="bucket",
-            embedding=emb_a, config=fresh_config,
+            fresh_conn,
+            content_a,
+            room_name="notes",
+            locus_name="bucket",
+            embedding=emb_a,
+            config=fresh_config,
         )
         vm_before = fresh_conn.execute(
             "SELECT vm_score FROM chunk WHERE chunk_id = ?", (cid_a,)
         ).fetchone()[0]
 
         store_memory(
-            fresh_conn, content_b, room_name="notes", locus_name="bucket",
-            embedding=emb_b, config=fresh_config,
+            fresh_conn,
+            content_b,
+            room_name="notes",
+            locus_name="bucket",
+            embedding=emb_b,
+            config=fresh_config,
         )
         vm_after = fresh_conn.execute(
             "SELECT vm_score FROM chunk WHERE chunk_id = ?", (cid_a,)
@@ -165,8 +201,12 @@ class TestUserStorySafetyAndCompliance:
     def test_safety_forget_redacts_chunk(self, fresh_conn, fresh_config, embedder):
         content = "My secret is alice@example.com"
         cid = store_memory(
-            fresh_conn, content, room_name="secrets", locus_name="tmp",
-            embedding=embedder.encode_single(content), config=fresh_config,
+            fresh_conn,
+            content,
+            room_name="secrets",
+            locus_name="tmp",
+            embedding=embedder.encode_single(content),
+            config=fresh_config,
         )
         hits = safety_scan_chunk(content)
         assert "email" in hits
@@ -186,9 +226,7 @@ class TestUserStoryTemporalQueries:
     def test_temporal_point_query_finds_valid_facts(self, fresh_conn):
         now = 1_700_000_000
         # Fact valid from now, no end
-        fresh_conn.execute(
-            "INSERT INTO room(name) VALUES ('history')"
-        )
+        fresh_conn.execute("INSERT INTO room(name) VALUES ('history')")
         fresh_conn.execute(
             """INSERT INTO chunk(locus_id, room_id, content, content_hash, vm_score, created_at, valid_from, valid_to)
                 VALUES (NULL, 1, 'Fact A', 'hash_a', 0.8, ?, ?, NULL)""",
@@ -215,6 +253,7 @@ class TestUserStoryForgettingAndDecay:
 
     def test_ebbinghaus_decay_reduces_vm(self, fresh_conn):
         from datetime import datetime, timezone
+
         fresh_conn.execute("INSERT INTO room(name) VALUES ('aging')")
         now = int(datetime.now(timezone.utc).timestamp())
         one_hour_ago = now - 3600
@@ -241,13 +280,16 @@ class TestUserStoryCuriosity:
             "Third memory just now",
         ]:
             store_memory(
-                fresh_conn, text, room_name="journal", locus_name="diary",
-                embedding=embedder.encode_single(text), config=fresh_config,
+                fresh_conn,
+                text,
+                room_name="journal",
+                locus_name="diary",
+                embedding=embedder.encode_single(text),
+                config=fresh_config,
             )
         # Manually age the first memory
         fresh_conn.execute(
-            "UPDATE chunk SET last_access_at = 0 WHERE content LIKE ?",
-            ("First memory%",)
+            "UPDATE chunk SET last_access_at = 0 WHERE content LIKE ?", ("First memory%",)
         )
         ids = curiosity_probe(fresh_conn, limit=2)
         assert len(ids) >= 1
@@ -263,10 +305,15 @@ class TestUserStoryContextAssembly:
     def test_assembled_context_includes_memories_and_budget(self, fresh_conn, fresh_config):
         chunks = [
             RetrievedChunk(
-                chunk_id=i, room_name="r", locus_name="l",
+                chunk_id=i,
+                room_name="r",
+                locus_name="l",
                 content=f"Memory number {i} with some text.",
-                provenance_id=None, rrf_score=1.0, vm_score=0.9 - i * 0.05,
-                frqad_score=0.9, recency_hours=float(i),
+                provenance_id=None,
+                rrf_score=1.0,
+                vm_score=0.9 - i * 0.05,
+                frqad_score=0.9,
+                recency_hours=float(i),
                 final_score=1.0 - i * 0.01,
             )
             for i in range(10)
@@ -283,13 +330,17 @@ class TestUserStoryTFCAdaptation:
 
     def test_high_novelty_makes_explorer(self):
         tfc = TwinForceController(TFCState(e=0.5, a=0.5, tau=7.0, r=3))
-        tfc.update({"novelty": 0.8, "repetition": 0.0, "context_pressure": 0.0, "satisfaction": 0.0})
+        tfc.update(
+            {"novelty": 0.8, "repetition": 0.0, "context_pressure": 0.0, "satisfaction": 0.0}
+        )
         assert tfc.state.e < 0.5
         assert tfc.state.a > 0.5
 
     def test_high_repetition_makes_builder(self):
         tfc = TwinForceController(TFCState(e=0.5, a=0.5, tau=7.0, r=3))
-        tfc.update({"novelty": 0.0, "repetition": 0.8, "context_pressure": 0.0, "satisfaction": 0.0})
+        tfc.update(
+            {"novelty": 0.0, "repetition": 0.8, "context_pressure": 0.0, "satisfaction": 0.0}
+        )
         assert tfc.state.e > 0.5
         assert tfc.state.a < 0.5
 
@@ -321,8 +372,10 @@ class TestUserStoryValueModel:
     def test_actionable_memory_gets_high_task_utility(self):
         vm, factors = compute_vm(
             "I need to schedule a meeting with the team tomorrow",
-            user_weights=None, source_type="user_input",
-            user_goals=["meeting"], user_values=["productive"],
+            user_weights=None,
+            source_type="user_input",
+            user_goals=["meeting"],
+            user_values=["productive"],
         )
         assert 0.0 <= vm <= 1.0
         assert factors["task_utility"] > 0.5
@@ -330,7 +383,8 @@ class TestUserStoryValueModel:
     def test_self_referential_memory_gets_ego_score(self):
         vm, factors = compute_vm(
             "I feel happy about my progress today",
-            user_weights=None, source_type="user_input",
+            user_weights=None,
+            source_type="user_input",
         )
         assert factors["self_relevance"] > 0.0
 

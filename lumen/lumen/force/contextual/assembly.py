@@ -13,6 +13,7 @@ from jinja2 import BaseLoader, Environment
 from lumen.brand.errors import BudgetExceededError
 from lumen.config import LumenConfig
 from lumen.force.contextual.token_budget import get_token_counter
+from lumen.logging import get_console_logger
 from lumen.lumen.controller import TFCState
 from lumen.lumen.fusion import RetrievedChunk
 
@@ -72,7 +73,11 @@ def assemble_context(
         token_counter = get_token_counter(model_dir)
 
     budget_tokens = config.context_budget
-    system_prompt = system_prompt_override if system_prompt_override is not None else _build_system_prompt(tfc_state)
+    system_prompt = (
+        system_prompt_override
+        if system_prompt_override is not None
+        else _build_system_prompt(tfc_state)
+    )
     minimap = _build_minimap(retrieved_chunks)
     goal_block = _render_goal_tree(active_goals)
 
@@ -83,7 +88,9 @@ def assemble_context(
     packed = []
     truncated_any = False
     for rc in sorted(retrieved_chunks, key=lambda x: x.final_score, reverse=True):
-        chunk_text = f"[Room:{rc.room_name} Locus:{rc.locus_name} Prov:{rc.provenance_id}]\n{rc.content}\n\n"
+        chunk_text = (
+            f"[Room:{rc.room_name} Locus:{rc.locus_name} Prov:{rc.provenance_id}]\n{rc.content}\n\n"
+        )
         chunk_tokens = token_counter.count(chunk_text)
 
         # If a single chunk is absurdly large, truncate it aggressively
@@ -95,17 +102,26 @@ def assemble_context(
         if used + chunk_tokens > budget_tokens:
             if packed:
                 # We have at least something; log truncation and stop packing
-                _log_truncation(query, packed=len(packed), dropped=len(retrieved_chunks) - len(packed), truncated=truncated_any)
+                _log_truncation(
+                    query,
+                    packed=len(packed),
+                    dropped=len(retrieved_chunks) - len(packed),
+                    truncated=truncated_any,
+                )
                 break
             # Stage 2: emergency — drop lowest-score items to make room for top chunk
             if len(retrieved_chunks) > 1:
                 # Just include the top chunk alone
-                _log_truncation(query, packed=1, dropped=len(retrieved_chunks) - 1, truncated=truncated_any)
+                _log_truncation(
+                    query, packed=1, dropped=len(retrieved_chunks) - 1, truncated=truncated_any
+                )
                 packed = [chunk_text]
                 used += chunk_tokens
                 break
             # Nothing can fit — truly broken
-            raise BudgetExceededError("LCX-2001 BudgetExceeded: even top chunk exceeds context budget")
+            raise BudgetExceededError(
+                "LCX-2001 BudgetExceeded: even top chunk exceeds context budget"
+            )
 
         packed.append(chunk_text)
         used += chunk_tokens
@@ -168,10 +184,4 @@ def _render_goal_tree(goals: list[str]) -> str:
     return "Goals:\n" + "\n".join(f"  - {g}" for g in goals) + "\n"
 
 
-logger = None
-try:
-    import structlog
-
-    logger = structlog.get_logger()
-except Exception:
-    pass
+logger = get_console_logger(__name__)

@@ -3,7 +3,6 @@
 Simple rule-based router since fasttext model may not exist.
 """
 
-
 from lumen.lumen.controller import TwinForceController
 
 
@@ -15,6 +14,7 @@ class IntentRouter:
         if model_path:
             try:
                 import fasttext
+
                 self.model = fasttext.load_model(model_path)
             except Exception:
                 pass
@@ -22,7 +22,10 @@ class IntentRouter:
     def classify(self, query: str, tfc: TwinForceController | None = None) -> str:
         q = query.lower().strip()
         # Explicit rule routing
-        if any(q.startswith(prefix) for prefix in ("what is", "what are", "remember", "who is", "where is")):
+        if any(
+            q.startswith(prefix)
+            for prefix in ("what is", "what are", "remember", "who is", "where is")
+        ):
             return "factual"
         if any(prefix in q for prefix in ("why ", "how ", "explain")):
             return "exploratory"
@@ -34,7 +37,7 @@ class IntentRouter:
         # fastText model fallback
         if self.model is not None:
             try:
-                label, prob = self.model.predict(q.replace('\n', ' '))
+                label, prob = self.model.predict(q.replace("\n", " "))
                 intent = label[0].replace("__label__", "")
                 if prob[0] >= 0.7:
                     return intent

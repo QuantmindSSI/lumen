@@ -36,6 +36,8 @@ except ImportError as exc:
     print(f"[ERROR] Cannot import lumen: {exc}")
     sys.exit(1)
 
+import contextlib
+
 from lumen.config import LumenConfig
 from lumen.data.schema import get_connection
 from lumen.force.contextual.embed import FallbackEmbedder
@@ -72,10 +74,8 @@ def _measure_latency(pipeline: SearchPipeline, queries: list[str], k: int = 10) 
     latencies: list[float] = []
     for q in queries:
         t0 = time.perf_counter()
-        try:
+        with contextlib.suppress(Exception):
             pipeline.execute(q, k=k)
-        except Exception:
-            pass
         latencies.append((time.perf_counter() - t0) * 1000)
     arr = np.array(latencies)
     return {
@@ -177,7 +177,7 @@ def run_benchmark() -> dict[str, Any]:
         embs = embedder.encode(texts)
 
         t0 = time.perf_counter()
-        for i, (text, emb) in enumerate(zip(texts, embs)):
+        for i, (text, emb) in enumerate(zip(texts, embs, strict=False)):
             store_memory(
                 conn,
                 content=text,

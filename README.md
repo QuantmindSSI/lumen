@@ -201,6 +201,7 @@ Blocks all external API calls. Embeddings run locally via ONNX Runtime. Your dat
 ### 🔌 Integrations
 - **MCP Server** — OpenCode, Claude Desktop, GitHub Copilot
 - **LangChain** — `LumenChatMemory` adapter
+- **LangGraph** — `LumenCheckpointSaver` for graph state persistence (`pip install lumen[langgraph]`)
 - **FastAPI** — REST API with health checks
 - **OpenCode** — Native skill in `.opencode/skills/lumen-memory/`
 
@@ -218,6 +219,8 @@ The dashboard shows real-time retrieval effectiveness, Twin-Force Controller sta
 
 ## Benchmarks
 
+### Cross-System Head-to-Head
+
 | Metric | Lumen (RPi5) | Chroma | FAISS | Qdrant |
 |---|---|---|---|---|
 | Install size | ~180 MB | ~250 MB | ~300 MB | ~400 MB |
@@ -228,6 +231,29 @@ The dashboard shows real-time retrieval effectiveness, Twin-Force Controller sta
 | Cold start | 0.8 s | 2.1 s | 1.5 s | 3.2 s |
 | Forgets gracefully | ✅ | ❌ | ❌ | ❌ |
 | Runs offline | ✅ | ⚠️ | ✅ | ❌ |
+
+### Proprietary Evaluation Suites
+
+Lumen ships with four first-party benchmarks that evaluate properties no generic vector store measures:
+
+| Benchmark | What It Measures | Run |
+|---|---|---|
+| **Retrieval** | R@k, nDCG@k, MAP, MRR across BM25/dense/hybrid. MS MARCO + BEIR subsets with bootstrap CIs. | `python -m lumen.benchmarks.retrieval.run` |
+| **Forgetting** | 90-day survival curves, interference precision, VM distribution drift, decay + eviction pipeline. | `python -m lumen.benchmarks.forgetting.run` |
+| **Performance** | Query latency (p50/p95/p99), ingestion throughput, RAM/DB footprint, write-amplification speedup. | `python -m lumen.benchmarks.perf.run` |
+| **Palace Navigation Efficiency** | Latency speedup and recall retention of room/locus-constrained search vs. flat global. Intent routing accuracy and pruning efficiency. | `python -m lumen.benchmarks.navigation.run` |
+| **End-to-End Memory Quality** | Multi-turn conversational memory persistence with 7 agent personas. R@k semantic recall, similarity, latency across sessions. | `python -m lumen.benchmarks.e2e.run` |
+
+Run all at once: `python -m lumen.benchmarks.run_all`
+
+### Domain Corpus & Seeding
+
+Lumen ships with a hand-crafted knowledge corpus (`datasets/domain_corpus.json`) covering 8 domains: ML, NLP, cybersecurity, distributed systems, healthcare AI, quantum computing, open source, and climate tech. Seed a production-ready palace:
+
+```bash
+python -m datasets.seed                    # uses all-MiniLM-L6-v2 embeddings
+python -m datasets.seed --embedder BAAI/bge-small-en-v1.5  # higher-quality
+```
 
 ---
 
@@ -243,12 +269,12 @@ The dashboard shows real-time retrieval effectiveness, Twin-Force Controller sta
 
 ## Roadmap
 
-| Milestone | Target | Key Deliverables |
+| Milestone | Status | Key Deliverables |
 |---|---|---|
-| **M1** | ✅ Now | Store & Retrieve — schema, BM25+dense fusion, FRQAD, wear batcher |
-| **M2** | Q4 2026 | Palace & Forget — onboarding wizard, V(m) calibration, optical degradation |
-| **M3** | Q1 2027 | Context & Twin Force — assembly autonomy, sleep consolidation, TFC learning |
-| **M4** | Q2 2027 | Network & Polish — P2P sharing, multi-user, encryption at rest |
+| **M1** | ✅ Done | Store & Retrieve — schema, BM25+dense fusion, FRQAD, wear batcher |
+| **M2** | ✅ Done | Palace & Forget — onboarding wizard (`illuminate`), V(m) calibration, optical degradation |
+| **M3** | ✅ Core Done | Context & Twin Force — assembly autonomy, sleep consolidation, TFC learning |
+| **M4** | In Progress | Network & Polish — P2P sharing (`beam`), multi-user, encryption at rest, LangGraph adapter ✅ |
 
 ---
 

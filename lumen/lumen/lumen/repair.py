@@ -13,13 +13,9 @@ if TYPE_CHECKING:
     from lumen.lumen.controller import TwinForceController
     from lumen.lumen.search import SearchPipeline
 
-logger = None
-try:
-    import structlog
+from lumen.logging import get_console_logger
 
-    logger = structlog.get_logger()
-except Exception:
-    pass
+logger = get_console_logger(__name__)
 
 
 class SearchRepair:

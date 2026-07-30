@@ -21,15 +21,10 @@ from collections.abc import Iterator, Sequence
 from typing import Any
 
 from lumen.config import LumenConfig
+from lumen.logging import get_console_logger
 from lumen.lumen.conversation import ConversationMemory
 
-logger = None
-try:
-    import structlog
-
-    logger = structlog.get_logger()
-except Exception:
-    pass
+logger = get_console_logger(__name__)
 
 # ---------------------------------------------------------------------------
 # LumenChatMemory — native LangChain memory
@@ -97,14 +92,17 @@ class LumenChatMemory(_LumenChatMemoryBase):
             if embedder is None:
                 try:
                     from lumen.force.contextual.embed import get_embedder
+
                     embedder = get_embedder(self.config, allow_mock=False)
                 except Exception:
                     from lumen.force.contextual.embed import MockEmbedder
+
                     if logger:
                         logger.warning("langchain_memory_using_mock_embedder")
                     embedder = MockEmbedder(dims=self.config.embedding_dims)
             self._memory = ConversationMemory(
-                config=self.config, embedder=embedder,
+                config=self.config,
+                embedder=embedder,
             )
         return self._memory
 
@@ -200,9 +198,7 @@ class LumenChatMemory(_LumenChatMemoryBase):
         from lumen.force.mnemonic.value_model import learn_weights_from_feedback
 
         try:
-            new_weights = learn_weights_from_feedback(
-                self.memory.conn, user_id=self.user_id
-            )
+            new_weights = learn_weights_from_feedback(self.memory.conn, user_id=self.user_id)
             if logger:
                 logger.info("vm_weights_learned", user_id=self.user_id)
             self.memory.conn.execute(
@@ -248,9 +244,7 @@ if BaseStore is not None:
         @property
         def memory(self) -> ConversationMemory:
             if self._memory is None:
-                self._memory = ConversationMemory(
-                    config=self.config, embedder=self._embedder
-                )
+                self._memory = ConversationMemory(config=self.config, embedder=self._embedder)
             return self._memory
 
         def _parse_key(self, key: str) -> tuple[str, str, str]:

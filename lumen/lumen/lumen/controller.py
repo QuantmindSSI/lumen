@@ -3,12 +3,12 @@
 Manages the dynamic equilibrium between Mnemonic and Contextual forces.
 """
 
-
 from pydantic import BaseModel, Field
 
 
 class TFCState(BaseModel):
     """Pydantic model for TFC state variables."""
+
     e: float = Field(default=0.5, ge=0.0, le=1.0, description="mnemonic/conservation bias")
     a: float = Field(default=0.5, ge=0.0, le=1.0, description="attentional temperature")
     tau: float = Field(default=7.0, ge=0.0, description="temporal horizon (days)")
