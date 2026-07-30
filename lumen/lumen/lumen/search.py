@@ -84,10 +84,13 @@ class SearchPipeline:
         start = time.perf_counter()
 
         # Stage 1: Intent classification
-        intent = self.intent_router.classify(query, self.tfc)
+        query_vec = self.embedder.encode_single(query)
+        if self.intent_router.lr_coef is not None:
+            intent = self.intent_router.classify_with_embedding(query_vec, self.tfc)
+        else:
+            intent = self.intent_router.classify(query, self.tfc)
 
         # Stage 2: Parallel retrieval (sequential for simplicity, but real)
-        query_vec = self.embedder.encode_single(query)
         lexical_hits = self.lexical.search(query, k=k)
         dense_hits = self.vector.search(query_vec, k=k)
 
