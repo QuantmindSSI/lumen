@@ -3,6 +3,8 @@
 import sqlite3
 from pathlib import Path
 
+from lumen.data.migrate import migrate
+
 _SQL_PATH = Path(__file__).with_suffix(".sql")
 
 
@@ -10,6 +12,10 @@ def init_db(conn: sqlite3.Connection) -> None:
     """Execute the canonical schema SQL against an open connection."""
     sql = _SQL_PATH.read_text(encoding="utf-8")
     conn.executescript(sql)
+    current = conn.execute("PRAGMA user_version").fetchone()[0]
+    if current == 0:
+        conn.execute("PRAGMA user_version = 1")
+    migrate(conn)
 
 
 def get_connection(config) -> sqlite3.Connection:
@@ -36,5 +42,8 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
     tables = {row[0] for row in cursor.fetchall()}
     if user_version == 0 and not tables:
         init_db(conn)
-        conn.execute("PRAGMA user_version = 1")
-        conn.commit()
+        # init_db may have already advanced user_version via migrate
+        if conn.execute("PRAGMA user_version").fetchone()[0] == 0:
+            conn.execute("PRAGMA user_version = 1")
+            conn.commit()
+    migrate(conn)

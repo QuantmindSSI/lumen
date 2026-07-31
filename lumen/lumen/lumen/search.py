@@ -10,6 +10,7 @@ from lumen.config import LumenConfig
 from lumen.force.mnemonic.retrieval_dense import VectorChannel
 from lumen.force.mnemonic.retrieval_graph import GraphChannel
 from lumen.force.mnemonic.retrieval_lexical import LexicalChannel
+from lumen.force.mnemonic.store import _tenant_id_supported
 from lumen.logging import get_console_logger
 from lumen.lumen.controller import TwinForceController
 from lumen.lumen.fusion import RetrievedChunk, fuse_and_rerank
@@ -80,6 +81,7 @@ class SearchPipeline:
         goal_tree_keywords: list[str] | None = None,
         k: int = 20,
         max_repair_attempts: int = 1,
+        tenant_id: str = "default",
     ) -> list[RetrievedChunk]:
         start = time.perf_counter()
 
@@ -112,6 +114,17 @@ class SearchPipeline:
             graph_hits=graph_hits or None,
         )
 
+        has_tenant = _tenant_id_supported(self.conn)
+        if has_tenant and tenant_id != "default" and results:
+            chunk_ids = [r.chunk_id for r in results]
+            placeholders = ",".join("?" for _ in chunk_ids)
+            valid_rows = self.conn.execute(
+                f"SELECT chunk_id FROM chunk WHERE chunk_id IN ({placeholders}) AND tenant_id = ?",
+                chunk_ids + [tenant_id],
+            ).fetchall()
+            valid_ids = {r[0] for r in valid_rows}
+            results = [r for r in results if r.chunk_id in valid_ids]
+
         # Stage 4: Re-access reinforcement — retrieved chunks get a V(m) boost
         self._record_access(results)
 
@@ -138,7 +151,18 @@ class SearchPipeline:
                 repair = SearchRepair(self.tfc, self)
                 repaired = repair.attempt_repair(query, reason)
                 if repaired:
-                    results = repaired
+                    has_tenant = _tenant_id_supported(self.conn)
+                    if has_tenant and tenant_id != "default" and repaired:
+                        chunk_ids = [r.chunk_id for r in repaired]
+                        placeholders = ",".join("?" for _ in chunk_ids)
+                        valid_rows = self.conn.execute(
+                            f"SELECT chunk_id FROM chunk WHERE chunk_id IN ({placeholders}) AND tenant_id = ?",
+                            chunk_ids + [tenant_id],
+                        ).fetchall()
+                        valid_ids = {r[0] for r in valid_rows}
+                        results = [r for r in repaired if r.chunk_id in valid_ids]
+                    else:
+                        results = repaired
 
         elapsed_ms = (time.perf_counter() - start) * 1000
         if logger:

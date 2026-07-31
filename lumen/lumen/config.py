@@ -59,6 +59,10 @@ class LumenConfig(BaseSettings):
     api_rate_limit: str = "60/minute"
     allowed_origins: str = "*"
     request_max_size_bytes: int = 1_048_576
+    pii_detection_enabled: bool = True
+    pii_redaction_mode: str = "redact"  # block | redact | hash
+    encryption_key: str | None = None
+    encryption_provider: str = "none"  # sqlcipher | fernet | none
     release_threshold: float = 0.05
 
     _resolved: bool = PrivateAttr(default=False)

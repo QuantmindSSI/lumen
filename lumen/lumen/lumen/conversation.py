@@ -15,7 +15,7 @@ from lumen.data.schema import get_connection
 from lumen.force.contextual.assembly import assemble_context
 from lumen.force.contextual.embed import get_embedder
 from lumen.force.mnemonic.retrieval_graph import GraphChannel
-from lumen.force.mnemonic.store import store_memory
+from lumen.force.mnemonic.store import _tenant_id_supported, store_memory
 from lumen.force.mnemonic.value_model import DEFAULT_WEIGHTS, learn_weights_from_feedback
 from lumen.logging import get_console_logger
 from lumen.lumen.controller import TwinForceController
@@ -74,12 +74,14 @@ class ConversationMemory:
         tfc: TwinForceController | None = None,
         embedder=None,
         user_id: str = "default",
+        tenant_id: str = "default",
     ) -> None:
         self.config = config or LumenConfig()
         self.conn = conn or get_connection(self.config)
         self.tfc = tfc or TwinForceController()
         self._own_conn = conn is None
         self.user_id = user_id
+        self.tenant_id = tenant_id
 
         if embedder is not None:
             self.embedder = embedder
@@ -135,7 +137,7 @@ class ConversationMemory:
             :class:`TurnResult` containing assembled prompt and raw chunks.
         """
         goals = active_goals if active_goals is not None else self.goals.active_path_keywords()
-        results = self.pipeline.execute(query, goal_tree_keywords=goals)
+        results = self.pipeline.execute(query, goal_tree_keywords=goals, tenant_id=self.tenant_id)
         top = results[:top_k]
 
         if not top:
@@ -190,6 +192,7 @@ class ConversationMemory:
             source_type="user_input",
             embedding=user_emb,
             config=self.config,
+            tenant_id=self.tenant_id,
         )
         assistant_chunk_id = store_memory(
             self.conn,
@@ -198,6 +201,7 @@ class ConversationMemory:
             source_type="agent_reasoning",
             embedding=assistant_emb,
             config=self.config,
+            tenant_id=self.tenant_id,
         )
 
         if retrieved_chunks:
@@ -257,13 +261,22 @@ class ConversationMemory:
         positive: int,
         user_id: str,
         feedback_type: str,
+        tenant_id: str | None = None,
     ) -> None:
         """Insert a row into ``feedback_log``."""
-        self.conn.execute(
-            """INSERT INTO feedback_log (chunk_id, user_id, positive, feedback_type, created_at)
-               VALUES (?, ?, ?, ?, unixepoch())""",
-            (chunk_id, user_id, positive, feedback_type),
-        )
+        tid = tenant_id if tenant_id is not None else self.tenant_id
+        if _tenant_id_supported(self.conn):
+            self.conn.execute(
+                """INSERT INTO feedback_log (chunk_id, user_id, positive, feedback_type, created_at, tenant_id)
+                   VALUES (?, ?, ?, ?, unixepoch(), ?)""",
+                (chunk_id, user_id, positive, feedback_type, tid),
+            )
+        else:
+            self.conn.execute(
+                """INSERT INTO feedback_log (chunk_id, user_id, positive, feedback_type, created_at)
+                   VALUES (?, ?, ?, ?, unixepoch())""",
+                (chunk_id, user_id, positive, feedback_type),
+            )
         self.conn.commit()
         if logger:
             logger.info("feedback_logged", chunk_id=chunk_id, positive=positive, type=feedback_type)

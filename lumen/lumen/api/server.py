@@ -16,6 +16,7 @@ Endpoints:
 from __future__ import annotations
 
 import sqlite3
+import json
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -38,6 +39,7 @@ from lumen.lumen.controller import TwinForceController
 from lumen.lumen.conversation import ConversationMemory
 from lumen.lumen.fusion import RetrievedChunk
 from lumen.lumen.search import SearchPipeline
+from lumen.audit import log_audit_event
 
 logger = get_console_logger(__name__)
 
@@ -91,6 +93,8 @@ async def _auth_middleware(request: Request, call_next):
             return JSONResponse(status_code=401, content={"detail": "Invalid or missing API key"})
     request_id = str(uuid.uuid4())[:8]
     request.state.request_id = request_id
+    tenant_id = request.headers.get("X-Tenant-ID") or request.query_params.get("tenant_id") or "default"
+    request.state.tenant_id = tenant_id
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
     return response
@@ -146,6 +150,7 @@ app.add_middleware(_SizeLimitMiddleware, max_bytes=_config.request_max_size_byte
 class SearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000, description="Search query string")
     top_k: int = Field(5, ge=1, le=50)
+    tenant_id: str = Field("default", max_length=128)
 
 
 class SearchResponse(BaseModel):
@@ -161,6 +166,7 @@ class StoreRequest(BaseModel):
     source_type: str = Field(
         "user_input", pattern="^(user_input|agent_reasoning|consolidation|import|p2p_share)$"
     )
+    tenant_id: str = Field("default", max_length=128)
 
 
 class StoreResponse(BaseModel):
@@ -173,6 +179,7 @@ class FeedbackRequest(BaseModel):
     was_useful: bool
     user_id: str = "default"
     feedback_type: str = Field("explicit", pattern="^(implicit|explicit|repair)$")
+    tenant_id: str = Field("default", max_length=128)
 
 
 class FeedbackResponse(BaseModel):
@@ -191,6 +198,7 @@ class TurnRequest(BaseModel):
     assistant_msg: str = Field(..., min_length=1, max_length=50000)
     room: str = Field("conversations", max_length=128)
     retrieved_chunk_ids: list[int] = Field(default_factory=list, max_length=100)
+    tenant_id: str = Field("default", max_length=128)
 
 
 class TurnResponse(BaseModel):
@@ -324,7 +332,7 @@ async def search(request: Request, req: SearchRequest) -> SearchResponse:
     pipeline = _get_pipeline()
     if pipeline is None:
         raise HTTPException(status_code=503, detail="Search pipeline not initialised")
-    results = pipeline.execute(req.query, k=req.top_k)
+    results = pipeline.execute(req.query, k=req.top_k, tenant_id=req.tenant_id)
     latency_ms = (time.perf_counter() - t0) * 1000
 
     serialised = [
@@ -344,6 +352,18 @@ async def search(request: Request, req: SearchRequest) -> SearchResponse:
         query=req.query[:100],
         results=len(serialised),
         latency_ms=round(latency_ms, 2),
+    )
+    request_id = getattr(request.state, "request_id", "unknown")
+    log_audit_event(
+        conn=_get_conn(),
+        event_type="api_request",
+        actor="anonymous",
+        resource_type="query",
+        resource_id=None,
+        action="search",
+        metadata_json=json.dumps({"query": req.query, "results": len(serialised)}),
+        client_ip=get_remote_address(request),
+        request_id=request_id,
     )
     return SearchResponse(query=req.query, results=serialised, latency_ms=round(latency_ms, 2))
 
@@ -368,6 +388,19 @@ async def store(request: Request, req: StoreRequest) -> StoreResponse:
         source_type=req.source_type,
         embedding=embedding,
         config=config,
+        tenant_id=req.tenant_id,
+    )
+    request_id = getattr(request.state, "request_id", "unknown")
+    log_audit_event(
+        conn=conn,
+        event_type="memory_stored",
+        actor="anonymous",
+        resource_type="chunk",
+        resource_id=chunk_id,
+        action="store",
+        metadata_json=json.dumps({"room": req.room, "tenant_id": req.tenant_id}),
+        client_ip=get_remote_address(request),
+        request_id=request_id,
     )
     return StoreResponse(chunk_id=chunk_id, room=req.room)
 
@@ -383,6 +416,18 @@ async def feedback(request: Request, req: FeedbackRequest) -> FeedbackResponse:
         was_useful=req.was_useful,
         user_id=req.user_id,
         feedback_type=req.feedback_type,
+    )
+    request_id = getattr(request.state, "request_id", "unknown")
+    log_audit_event(
+        conn=_get_conn(),
+        event_type="feedback_logged",
+        actor=req.user_id,
+        resource_type="feedback",
+        resource_id=req.chunk_id,
+        action="feedback",
+        metadata_json=json.dumps({"was_useful": req.was_useful}),
+        client_ip=get_remote_address(request),
+        request_id=request_id,
     )
     return FeedbackResponse(success=True)
 
@@ -447,6 +492,18 @@ async def turn(request: Request, req: TurnRequest) -> TurnResponse:
         assistant_msg=req.assistant_msg,
         retrieved_chunks=stubs,
         room_name=req.room,
+    )
+    request_id = getattr(request.state, "request_id", "unknown")
+    log_audit_event(
+        conn=conn,
+        event_type="turn_stored",
+        actor="anonymous",
+        resource_type="chunk",
+        resource_id=user_id,
+        action="turn",
+        metadata_json=json.dumps({"room": req.room}),
+        client_ip=get_remote_address(request),
+        request_id=request_id,
     )
     return TurnResponse(
         user_chunk_id=user_id,

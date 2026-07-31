@@ -5,6 +5,7 @@ Run numbered .sql files in migrations/.
 Current version = 1.
 """
 
+import importlib
 import sqlite3
 from pathlib import Path
 
@@ -13,7 +14,7 @@ from lumen.logging import get_console_logger
 logger = get_console_logger(__name__)
 
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 2
 
 
 def migrate(conn: sqlite3.Connection, target_version: int = CURRENT_SCHEMA_VERSION) -> None:
@@ -25,15 +26,22 @@ def migrate(conn: sqlite3.Connection, target_version: int = CURRENT_SCHEMA_VERSI
         return
 
     for v in range(current + 1, target_version + 1):
-        path = MIGRATIONS_DIR / f"{v:04d}.sql"
-        if path.exists():
-            conn.executescript(path.read_text(encoding="utf-8"))
+        sql_path = MIGRATIONS_DIR / f"{v:04d}.sql"
+        py_path = MIGRATIONS_DIR / f"{v:04d}.py"
+        if sql_path.exists():
+            conn.executescript(sql_path.read_text(encoding="utf-8"))
+            conn.execute(f"PRAGMA user_version = {v}")
+            if logger:
+                logger.info("migration_applied", from_version=current, to_version=v)
+        elif py_path.exists():
+            mod = importlib.import_module(f"lumen.data.migrations.{v:04d}")
+            mod.run(conn)
             conn.execute(f"PRAGMA user_version = {v}")
             if logger:
                 logger.info("migration_applied", from_version=current, to_version=v)
         else:
             if logger:
-                logger.warning("migration_missing", version=v, path=str(path))
+                logger.warning("migration_missing", version=v, path=str(sql_path))
             break
 
 

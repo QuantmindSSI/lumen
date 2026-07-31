@@ -20,6 +20,8 @@ PII_PATTERNS = {
     "ssn": re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
     "phone": re.compile(r"\b\d{3}-\d{3}-\d{4}\b"),
     "api_key": re.compile(r"[a-zA-Z0-9_-]{32,}"),
+    "credit_card": re.compile(r"\b(?:\d[ -]*?){13,16}\b"),
+    "ip_address": re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"),
 }
 
 AUDIT_LOG_PATH = Path.home() / ".lumen" / "logs" / "compliance.jsonl"
@@ -28,8 +30,19 @@ AUDIT_LOG_PATH = Path.home() / ".lumen" / "logs" / "compliance.jsonl"
 def safety_scan_chunk(content: str) -> list[str]:
     """Return list of triggered safety rule names."""
     hits = []
-    for rule_name, pattern in PII_PATTERNS.items():
-        if pattern.search(content):
+    patterns = dict(PII_PATTERNS)
+    try:
+        from lumen.config import LumenConfig
+        cfg = LumenConfig()
+        if cfg.pii_custom_patterns:
+            for idx, pat in enumerate(cfg.pii_custom_patterns.split(",")):
+                pat = pat.strip()
+                if pat:
+                    patterns[f"custom_{idx}"] = re.compile(pat)
+    except Exception:
+        pass
+    for rule_name, rx in patterns.items():
+        if rx.search(content):
             hits.append(rule_name)
     return hits
 
@@ -39,16 +52,18 @@ def safety_forget_chunk(conn: sqlite3.Connection, chunk_id: int, reason: str) ->
     Immediate deletion with provenance-chain clearance.
     Write-ahead audit BEFORE mutation.
     """
-    audit = {
-        "ts": datetime.now(timezone.utc).isoformat(),
-        "event": "safety_triggered_forget",
-        "chunk_id": chunk_id,
-        "reason": reason,
-        "provenance_cleared": True,
-    }
-    AUDIT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(AUDIT_LOG_PATH, "a") as f:
-        f.write(json.dumps(audit) + "\n")
+    from lumen.audit import log_audit_event
+    log_audit_event(
+        conn=conn,
+        event_type="compliance",
+        actor="system",
+        action="safety_forget",
+        resource_id=chunk_id,
+        resource_type="chunk",
+        metadata_json=json.dumps({"reason": reason}),
+        client_ip=None,
+        request_id=None,
+    )
 
     # Remove from FTS5
     conn.execute("DELETE FROM chunk_fts WHERE rowid = ?", (chunk_id,))
