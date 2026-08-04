@@ -13,9 +13,9 @@
 
 | Strategy | Mean | p50 | p95 | p99 |
 |---|---|---|---|---|
-| global | 46.86 | 21.56 | 144.07 | 202.39 |
-| oracle | 48.87 | 25.09 | 145.08 | 183.42 |
-| routed | 47.13 | 26.9 | 139.66 | 193.97 |
+| global | 47.64 | 25.57 | 162.23 | 206.55 |
+| oracle | 47.38 | 25.69 | 144.5 | 185.5 |
+| routed | 46.79 | 23.61 | 155.31 | 204.69 |
 
 ## Recall@k
 
@@ -36,7 +36,7 @@
 | Recall Retention @ 5 | 0.9969 | [0.9907, 1.0000] |
 | Recall Retention @ 10 | 0.9994 | [0.9954, 1.0027] |
 | Recall Retention @ 20 | 0.9984 | [0.9957, 1.0008] |
-| Latency Speedup | 1.43x | [1.24x, 1.63x] |
+| Latency Speedup | 1.43x | [1.25x, 1.62x] |
 
 ## Routed Room-Constrained vs Global
 
@@ -47,7 +47,7 @@
 | Recall Retention @ 5 | 1.0000 | [1.0000, 1.0000] |
 | Recall Retention @ 10 | 1.0036 | [1.0004, 1.0079] |
 | Recall Retention @ 20 | 1.0030 | [0.9992, 1.0083] |
-| Latency Speedup | 1.71x | [1.46x, 1.97x] |
+| Latency Speedup | 1.73x | [1.50x, 1.95x] |
 
 ## Intent Distribution
 
