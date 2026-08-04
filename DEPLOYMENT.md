@@ -1,7 +1,6 @@
 # Lumen Production Deployment Guide
 
-**Version:** 1.0.0  
-**Target:** v0.1.0-alpha  
+**Version:** v0.1.0-alpha  
 **Platforms:** Raspberry Pi 5, Jetson Orin Nano, Generic x86_64, ARM64 SBCs
 
 ---
@@ -506,7 +505,7 @@ curl -X POST http://localhost:8848/search \
 
 ## 10. Support & Community
 
-- **Documentation:** https://docs.lumen.ai
+- **Documentation:** https://github.com/QuantumindSSI/lumen/tree/main/docs
 - **Issues:** https://github.com/QuantumindSSI/lumen/issues
 - **Discussions:** https://github.com/QuantumindSSI/lumen/discussions
 - **Security:** security@lumen.ai

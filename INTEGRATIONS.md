@@ -3,15 +3,13 @@
 This document describes how to integrate **Lumen** (twin-force memory and context framework) into agentic coding platforms:
 
 - [OpenCode](#opencode)
-- [GitHub Copilot](#github-copilot)
-- [Devin](#devin)
 
 Each platform communicates with Lumen through one of three interfaces:
 
 | Interface | Best For | Platforms |
 |-----------|----------|-----------|
-| **MCP Server** (stdio) | Native tool calling | OpenCode, Copilot, Claude Desktop |
-| **HTTP API** | Remote / cloud deployments | Devin, custom agents, CI/CD |
+| **MCP Server** (stdio) | Native tool calling | OpenCode, Claude Desktop |
+| **HTTP API** | Remote / cloud deployments | Custom agents, CI/CD |
 | **Python SDK** (`ConversationMemory`) | In-process, LangChain agents | Custom Python agents |
 
 ---
@@ -161,174 +159,12 @@ For dedicated memory management, define a subagent:
 
 ---
 
-## GitHub Copilot
+## Platform Compatibility
 
-GitHub Copilot Chat (VS Code Insiders / VS Code 1.99+) supports MCP servers via the `@mcp` participant or direct tool registration.
-
-### VS Code Settings (MCP)
-
-Add to your VS Code `settings.json`:
-
-```json
-{
-  "github.copilot.chat.mcp.servers": [
-    {
-      "name": "lumen-memory",
-      "command": "python",
-      "args": ["-m", "lumen.integrations.mcp_server"],
-      "env": {
-        "LUMEN_DEVICE": "generic"
-      }
-    }
-  ]
-}
-```
-
-Restart VS Code. In Copilot Chat you can now ask:
-
-> "@lumen-memory search for our decision on database indexing"
-
-> "@lumen-memory store this in room decisions: We will use composite indexes on (user_id, created_at)"
-
-### Copilot Extension (Programmatic)
-
-For deeper VS Code integration, register Lumen as a custom participant in an extension:
-
-```typescript
-// src/extension.ts
-import * as vscode from 'vscode';
-
-export function activate(context: vscode.ExtensionContext) {
-  const participant = vscode.chat.createChatParticipant('copilot.lumen', async (request, context, response, token) => {
-    const query = request.prompt;
-    // Call Lumen HTTP API
-    const res = await fetch('http://localhost:8848/assemble', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, top_k: 5 })
-    });
-    const data = await res.json();
-    response.markdown(data.assembled_context || 'No relevant memories found.');
-  });
-  participant.iconPath = new vscode.ThemeIcon('database');
-}
-```
-
----
-
-## Devin
-
-Devin supports custom tools via the **Devin Tools API** and arbitrary HTTP calls in its bash/web tools.
-
-### Option A: Devin Custom Tool (Recommended)
-
-Register Lumen as a custom tool in your Devin workspace settings or organization profile.
-
-**Tool Definition:**
-
-```yaml
-name: lumen_memory
-description: >
-  Search, store, and manage long-term memory in the Lumen palace.
-  Use this when you need to recall prior decisions, persist new insights,
-  or assemble relevant context before writing code.
-parameters:
-  - name: action
-    type: string
-    enum: [search, store, assemble, turn, feedback, status]
-    required: true
-  - name: query
-    type: string
-    description: Search query or content to store (for search/store/assemble/turn)
-  - name: room
-    type: string
-    description: Room name (e.g., decisions, architecture, snippets)
-    default: conversations
-  - name: content
-    type: string
-    description: Content to store (for store action)
-  - name: user_msg
-    type: string
-    description: User message (for turn action)
-  - name: assistant_msg
-    type: string
-    description: Assistant message (for turn action)
-  - name: chunk_id
-    type: integer
-    description: Chunk ID for feedback
-  - name: was_useful
-    type: boolean
-    description: For feedback action
-endpoint:
-  type: http
-  base_url: http://host.docker.internal:8848
-  # If Lumen runs inside Devin's environment, use localhost:8848
-  headers:
-    Content-Type: application/json
-```
-
-**Devin can then call:**
-
-```
-Use lumen_memory with action="search", query="SQLite cache decision", room="decisions"
-Use lumen_memory with action="store", room="architecture", content="We adopted hexagonal ports-and-adapters..."
-Use lumen_memory with action="turn", user_msg="Add retry logic", assistant_msg="Added exponential backoff..."
-```
-
-### Option B: Direct HTTP from Devin
-
-If custom tools are unavailable, Devin can call the Lumen API via `curl` in bash:
-
-```bash
-# Search
-curl -s -X POST http://localhost:8848/search \
-  -H "Content-Type: application/json" \
-  -d '{"query":"database indexing decision","top_k":5}'
-
-# Store
-curl -s -X POST http://localhost:8848/store \
-  -H "Content-Type: application/json" \
-  -d '{"content":"Use composite indexes on (user_id, created_at)","room":"decisions"}'
-
-# Assemble context for current task
-curl -s -X POST http://localhost:8848/assemble \
-  -H "Content-Type: application/json" \
-  -d '{"query":"implement retry logic","top_k":5}'
-```
-
-### Option C: Devin + Lumen in Same Container
-
-If you run Devin with a custom Docker image, embed Lumen and start it on boot:
-
-```dockerfile
-FROM cognition/devin:latest
-
-RUN pip install "lumen @ git+https://github.com/QuantumindSSI/lumen"
-RUN lumen init --device generic
-
-COPY lumen-entrypoint.sh /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
-```
-
-```bash
-#!/bin/bash
-# lumen-entrypoint.sh
-lumen serve --host 0.0.0.0 --port 8848 &
-exec /usr/local/bin/devin-start
-```
-
----
-
-## Platform Comparison
-
-| Feature | OpenCode | GitHub Copilot | Devin |
-|---------|----------|----------------|-------|
-| **Native MCP** | Yes | Yes (1.99+) | Via custom tools |
-| **In-process SDK** | Yes (Python) | No | No |
-| **HTTP API** | Yes | Yes (custom ext) | Yes |
-| **Skill/Agent scoping** | `.opencode/skills/` | Extension manifest | Workspace tools |
-| **Multi-tenant** | `user_id` per request | Per-workspace | Per-session |
-| **Feedback loop** | `lumen_feedback` + implicit | Explicit via chat | Tool call result |
+Lumen's MCP server (stdio) and HTTP API are supported by any platform that speaks MCP or JSON/REST, including
+OpenCode, Claude Desktop, and any custom agent using the Python SDK. The OpenCode section above provides
+configuration examples; the same `python -m lumen.integrations.mcp_server` command works for any MCP-compatible
+platform.
 
 ---
 

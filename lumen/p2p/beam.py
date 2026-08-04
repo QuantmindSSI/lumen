@@ -1,10 +1,14 @@
 """C10: P2P Memory Sharing (Beam Protocol).
 
-Household-only, LAN-scoped memory sharing with permission decay.
+Household-only, LAN-scoped memory sharing.
 
 TRANSPORT SECURITY: Beam sends plaintext over TCP. This is acceptable for
 trusted household LANs but NOT for adversarial networks. Do not expose Beam
 to the public internet or untrusted networks.
+
+NOTE: Permission decay (ttl_hours) is recorded in the packet but not yet
+enforced. Receiving peers should implement TTL expiration checks in a
+future release.
 """
 
 import asyncio

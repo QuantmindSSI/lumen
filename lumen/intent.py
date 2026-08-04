@@ -17,19 +17,11 @@ class IntentRouter:
     """Intent classifier with embedding-aware training capability."""
 
     def __init__(self, model_path: str | None = None):
-        self.model = None               # fastText model
         self.lr_coef: np.ndarray | None = None   # logistic regression weights
         self.lr_classes: list[str] | None = None
         self.lr_path: str | None = None
-        if model_path:
-            if model_path.endswith(".json"):
-                self._load_lr(model_path)
-            else:
-                try:
-                    import fasttext
-                    self.model = fasttext.load_model(model_path)
-                except Exception:
-                    pass
+        if model_path and model_path.endswith(".json"):
+            self._load_lr(model_path)
 
     def _load_lr(self, path: str) -> None:
         with open(path) as f:
@@ -105,17 +97,7 @@ class IntentRouter:
         if any(prefix in q for prefix in ("last ", "yesterday", "ago", "when ")):
             return "temporal"
 
-        # 2. fastText model fallback
-        if self.model is not None:
-            try:
-                label, prob = self.model.predict(q.replace("\n", " "))
-                intent = label[0].replace("__label__", "")
-                if prob[0] >= 0.7:
-                    return intent
-            except Exception:
-                pass
-
-        # 3. TFC deterministic fallback
+        # 2. TFC deterministic fallback
         if tfc is not None and tfc.state.a > 0.6:
             return "exploratory"
         return "factual"

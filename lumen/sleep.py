@@ -78,6 +78,8 @@ class SleepScheduler:
                 ebbinghaus_decay(conn, batcher=batcher)
                 from lumen.force.mnemonic.forgetting_l3_budget import budget_curated_eviction
                 budget_curated_eviction(conn, self.config, batcher=batcher)
+                from lumen.curiosity import curiosity_probe
+                curiosity_probe(conn, limit=10)
                 if batcher.queue:
                     batcher.flush_sync(list(batcher.queue))
                     batcher.queue.clear()

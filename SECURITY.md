@@ -13,7 +13,7 @@ Lumen takes security seriously. If you discover a vulnerability, please report i
 
 **Email:** security@lumen.ai
 
-**PGP Key:** (coming soon — check this file for updates)
+A PGP key is not yet published. For sensitive reports, request the key via email.
 
 ### What to Include
 
