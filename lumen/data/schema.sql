@@ -70,6 +70,20 @@ CREATE TABLE IF NOT EXISTS feedback_log (
     created_at INTEGER DEFAULT (unixepoch())
 );
 
+-- D18: Audit Log
+CREATE TABLE IF NOT EXISTS audit_log (
+    audit_id INTEGER PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    actor TEXT,
+    resource_type TEXT,
+    resource_id INTEGER,
+    action TEXT,
+    metadata_json TEXT,
+    client_ip TEXT,
+    request_id TEXT,
+    created_at INTEGER DEFAULT (unixepoch())
+);
+
 -- D16: User Profile Storage
 CREATE TABLE IF NOT EXISTS user_profile (
     user_id TEXT PRIMARY KEY DEFAULT 'default',

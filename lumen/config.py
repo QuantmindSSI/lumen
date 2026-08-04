@@ -49,7 +49,6 @@ class LumenConfig(BaseSettings):
     beam_port: int = 8847
     store_path: Path = Path.home() / ".lumen" / "store"
     model_path: Path = Path.home() / ".lumen" / "models"
-    cache_path: Path = Path.home() / ".lumen" / "cache"
     memory_budget_mb: int = 64
     sovereign: bool = True
     log_level: str = "info"
@@ -102,7 +101,10 @@ class LumenConfig(BaseSettings):
         if self._resolved:
             return
         profile = DEVICE_PROFILES.get(self.device, DEVICE_PROFILES["generic"])
-        self.context_budget = int(profile.get("context_budget", self.context_budget))  # type: ignore[call-overload]
-        self.memory_limit_mb = int(profile.get("memory_limit_mb", self.memory_limit_mb))  # type: ignore[call-overload]
-        self.vector_index = str(profile.get("vector_index", self.vector_index))  # type: ignore[assignment]
+        if self.context_budget == 2048:
+            self.context_budget = int(profile.get("context_budget", self.context_budget))
+        if self.memory_limit_mb == 300:
+            self.memory_limit_mb = int(profile.get("memory_limit_mb", self.memory_limit_mb))
+        if self.vector_index == "sqlite-vec":
+            self.vector_index = str(profile.get("vector_index", self.vector_index))
         self._resolved = True

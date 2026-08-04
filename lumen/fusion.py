@@ -40,6 +40,7 @@ def fuse_and_rerank(
     budget_candidates: int = 200,
     query_embedding: np.ndarray | None = None,
     graph_hits: list[GraphHit] | None = None,
+    enable_frqad: bool | None = None,
 ) -> list[RetrievedChunk]:
     """
     Stage 3: Reciprocal Rank Fusion + V(m) + FRQAD rerank + recency boost.
@@ -114,10 +115,9 @@ def fuse_and_rerank(
         if query_vec is not None:
             cand_vec = embedding_map.get(cid)
             if cand_vec is not None:
+                use_frqad = enable_frqad if enable_frqad is not None else True
                 try:
-                    from lumen.config import LumenConfig
-                    cfg = LumenConfig()
-                    if cfg.enable_frqad:
+                    if use_frqad:
                         from lumen.sovereign.frqad import compute_frqad
 
                         frqad = compute_frqad(query_vec, cand_vec, res or "FP32")

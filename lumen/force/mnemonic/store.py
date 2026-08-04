@@ -71,7 +71,7 @@ def store_memory(
     if config.pii_detection_enabled:
         from lumen.compliance.safety_forgetting import apply_pii_strategy, safety_scan_chunk
 
-        scan_hits = safety_scan_chunk(content)
+        scan_hits = safety_scan_chunk(content, custom_patterns=config.pii_custom_patterns)
         if scan_hits:
             logger.warning("safety_scan_triggered", room=room_name, hits=scan_hits, mode=config.pii_redaction_mode)
             content = apply_pii_strategy(content, scan_hits, config.pii_redaction_mode)

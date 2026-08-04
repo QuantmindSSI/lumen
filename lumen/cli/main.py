@@ -16,11 +16,11 @@ from lumen.brand.errors import ModelNotAvailableError
 from lumen.cli.models import model_app
 from lumen.compliance.safety_forgetting import get_recent_audit_events
 from lumen.config import LumenConfig
+from lumen.controller import TwinForceController
 from lumen.data.schema import ensure_schema, get_connection
 from lumen.force.contextual.embed import get_embedder
 from lumen.force.mnemonic.retrieval_graph import GraphChannel
 from lumen.force.mnemonic.store import store_memory
-from lumen.controller import TwinForceController
 from lumen.illuminate import run_onboarding_wizard
 from lumen.search import SearchPipeline
 
@@ -292,16 +292,24 @@ def compliance_audit(n: int = typer.Option(10, "--n")):
 @daemon_app.command(name="start")
 def daemon_start():
     """Start the SleepScheduler daemon in the foreground."""
+    from pathlib import Path
+
     from lumen.sleep import SleepScheduler
 
     config = LumenConfig()
     scheduler = SleepScheduler(config)
     scheduler.start()
+
+    pid_file = Path.home() / ".lumen" / "lumen_daemon.pid"
+    pid_file.parent.mkdir(parents=True, exist_ok=True)
+    pid_file.write_text(str(os.getpid()))
+
     console.print("[bold green]Daemon started. Press Ctrl+C to stop.[/bold green]")
 
     def _signal_handler(sig, frame):  # noqa: ARG001
         console.print("\n[bold yellow]Shutting down daemon...[/bold yellow]")
         scheduler.stop()
+        pid_file.unlink(missing_ok=True)
         sys.exit(0)
 
     signal.signal(signal.SIGINT, _signal_handler)
@@ -324,19 +332,25 @@ def daemon_run_once():
 
 @daemon_app.command(name="status")
 def daemon_status():
-    """Show scheduler status and next scheduled job times."""
-    from lumen.sleep import SleepScheduler
+    """Check if a Lumen daemon is running (checks PID file)."""
+    from pathlib import Path
 
-    config = LumenConfig()
-    scheduler = SleepScheduler(config)
-    running = scheduler.is_running
-    console.print(f"Scheduler running: {running}")
-    if running:
-        for job in scheduler.scheduler.get_jobs():
-            next_run = job.next_run_time
-            console.print(f"  Job '{job.id}': next run at {next_run}")
-    else:
-        console.print("[yellow]Scheduler is not running.[/yellow]")
+    pid_file = Path.home() / ".lumen" / "lumen_daemon.pid"
+    if pid_file.exists():
+        try:
+            pid = int(pid_file.read_text().strip())
+            import os
+            try:
+                os.kill(pid, 0)
+                console.print(f"[bold green]Daemon is running (PID {pid}).[/bold green]")
+                return
+            except OSError:
+                console.print("[yellow]Stale PID file found. Daemon is not running.[/yellow]")
+                pid_file.unlink(missing_ok=True)
+                return
+        except (ValueError, FileNotFoundError):
+            pass
+    console.print("[yellow]Daemon is not running.[/yellow]")
 
 
 @p2p_app.command(name="share")
@@ -344,7 +358,7 @@ def p2p_share(
     room: str = typer.Option(..., "--room", "-r"),
     ttl: int = typer.Option(24, "--ttl"),
 ):
-    """Share a room to discovered peers."""
+    """Share a room to discovered peers (requires LUMEN_SOVEREIGN=false)."""
     from lumen.p2p.beam import BeamNode
 
     config = LumenConfig()

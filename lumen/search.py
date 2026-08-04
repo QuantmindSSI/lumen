@@ -7,14 +7,14 @@ import sqlite3
 import time
 
 from lumen.config import LumenConfig
+from lumen.controller import TwinForceController
 from lumen.force.mnemonic.retrieval_dense import VectorChannel
 from lumen.force.mnemonic.retrieval_graph import GraphChannel
 from lumen.force.mnemonic.retrieval_lexical import LexicalChannel
 from lumen.force.mnemonic.store import _tenant_id_supported
-from lumen.logging import get_console_logger
-from lumen.controller import TwinForceController
 from lumen.fusion import RetrievedChunk, fuse_and_rerank
 from lumen.intent import IntentRouter
+from lumen.logging import get_console_logger
 
 logger = get_console_logger(__name__)
 
@@ -111,6 +111,7 @@ class SearchPipeline:
             budget_candidates=200,
             query_embedding=query_vec,
             graph_hits=graph_hits or None,
+            enable_frqad=self.config.enable_frqad,
         )
 
         has_tenant = _tenant_id_supported(self.conn)

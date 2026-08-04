@@ -26,16 +26,13 @@ PII_PATTERNS = {
 AUDIT_LOG_PATH = Path.home() / ".lumen" / "logs" / "compliance.jsonl"
 
 
-def safety_scan_chunk(content: str) -> list[str]:
+def safety_scan_chunk(content: str, custom_patterns: str = "") -> list[str]:
     """Return list of triggered safety rule names."""
     hits = []
     patterns = dict(PII_PATTERNS)
     try:
-        from lumen.config import LumenConfig
-
-        cfg = LumenConfig()
-        if cfg.pii_custom_patterns:
-            for idx, pat in enumerate(cfg.pii_custom_patterns.split(",")):
+        if custom_patterns:
+            for idx, pat in enumerate(custom_patterns.split(",")):
                 pat = pat.strip()
                 if pat:
                     patterns[f"custom_{idx}"] = re.compile(pat)
@@ -144,13 +141,18 @@ def _clear_provenance_tree(conn: sqlite3.Connection, chunk_id: int) -> None:
 
 
 def get_recent_audit_events(n: int = 10) -> list[dict]:
-    """Read last N compliance audit events from JSONL."""
-    if not AUDIT_LOG_PATH.exists():
+    """Read last N compliance audit events from SQLite audit_log."""
+    from lumen.config import LumenConfig
+    from lumen.data.schema import get_connection
+    try:
+        conn = get_connection(LumenConfig())
+        rows = conn.execute(
+            """SELECT audit_id, event_type, actor, resource_type, resource_id,
+                      action, metadata_json, client_ip, request_id, created_at
+               FROM audit_log ORDER BY created_at DESC LIMIT ?""",
+            (n,),
+        ).fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+    except Exception:
         return []
-    lines = []
-    with open(AUDIT_LOG_PATH) as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                lines.append(json.loads(line))
-    return lines[-n:]

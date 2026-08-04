@@ -85,7 +85,10 @@ def test_opportunistic_check_skips_when_on_battery(scheduler):
 
 def test_run_now_calls_consolidation(scheduler):
     """run_now should manually trigger a consolidation pass."""
-    with patch("lumen.sleep.run_consolidation_pass") as mock_run:
+    with (
+        patch("lumen.sleep.run_consolidation_pass") as mock_run,
+        patch("lumen.data.schema._enforce_permissions"),
+    ):
         scheduler.run_now()
         mock_run.assert_called_once()
         assert mock_run.call_args.args[0] == scheduler.config
@@ -95,6 +98,7 @@ def test_exception_in_consolidation_caught_and_logged(scheduler):
     """An exception in run_consolidation_pass should be caught and logged."""
     with (
         patch("lumen.sleep.run_consolidation_pass") as mock_run,
+        patch("lumen.data.schema._enforce_permissions"),
         patch("lumen.sleep.logger") as mock_logger,
     ):
         mock_run.side_effect = RuntimeError("boom")

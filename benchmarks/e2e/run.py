@@ -5,8 +5,11 @@ Simulates 10 multi-turn conversation sessions across 3 agent personas.
 Each session stores facts, asks questions that require recall, and
 measures whether the memory palace retrieves the correct information.
 
-This benchmark measures what SOTA frameworks (MemGPT, Mem0, Zep) measure:
-memory persistence, cross-session recall, and hallucination resistance.
+This benchmark measures key memory-quality properties on a synthetic
+28-query test corpus across 3 agent personas.
+Note: This is a self-evaluation; comparisons to external frameworks (MemGPT,
+Mem0, Zep) are not included. For standardized retrieval evaluation, see
+the BEIR runner at benchmarks/beir/run.py.
 
 Usage:
     python -m benchmarks.e2e.run

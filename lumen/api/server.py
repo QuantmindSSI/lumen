@@ -15,8 +15,8 @@ Endpoints:
 
 from __future__ import annotations
 
-import sqlite3
 import json
+import sqlite3
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -30,15 +30,14 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from lumen.brand.errors import ModelNotAvailableError
+from lumen._init import initialize_palace
+from lumen.audit import log_audit_event
 from lumen.config import LumenConfig
-from lumen.logging import get_console_logger
 from lumen.controller import TwinForceController
 from lumen.conversation import ConversationMemory
 from lumen.fusion import RetrievedChunk
+from lumen.logging import get_console_logger
 from lumen.search import SearchPipeline
-from lumen.audit import log_audit_event
-from lumen._init import initialize_palace
 
 logger = get_console_logger(__name__)
 
@@ -654,6 +653,7 @@ async def metrics() -> dict:
             "latency_p50_ms": None,
             "feedback_total": feedback_row["c"] or 0,
             "feedback_satisfaction_pct": round((feedback_row["sat"] or 0) * 100, 1),
+            "note": "Run python -m benchmarks.retrieval.run to populate retrieval metrics",
         },
         "business": {
             "data_sovereignty_pct": 100,

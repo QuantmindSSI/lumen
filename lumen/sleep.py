@@ -40,7 +40,7 @@ class SleepScheduler:
         self.scheduler.add_job(
             self._opportunistic_check,
             trigger="interval",
-            minutes=5,
+            seconds=self.config.scheduler_granularity,
             id="opportunistic",
         )
 
