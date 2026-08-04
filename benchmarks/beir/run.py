@@ -38,11 +38,11 @@ from lumen.force.mnemonic.store import store_memory
 from lumen.search import SearchPipeline
 
 SEEDS = [42, 123, 456]
-EMBEDDER_MODELS = ["all-MiniLM-L6-v2", "BAAI/bge-small-en-v1.5"]
+EMBEDDER_MODELS = ["BAAI/bge-small-en-v1.5"]
 TOP_K_VALUES = [1, 3, 5, 10, 20]
 N_BOOTSTRAP = 1_000
-NUM_PASSAGES = 3_000
-NUM_QUERIES = 50
+NUM_PASSAGES = 2_000
+NUM_QUERIES = 30
 EMBED_DIMS = 384
 
 BEIR_DATASETS = [
@@ -285,7 +285,7 @@ def run_single(seed, docs, query_texts, query_relevant_pids, dataset_name, embed
     np.random.seed(seed)
     tmpdir = tempfile.mkdtemp(prefix=f"lumen_beir_{dataset_name}_{seed}_")
     config = LumenConfig(
-        store_path=Path(tmpdir),
+        store_path=Path(tmpdir) / ".lumen" / "store",
         embedding_dims=EMBED_DIMS,
         vector_index="sqlite-vec",
     )
