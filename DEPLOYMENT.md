@@ -133,7 +133,6 @@ memory_limit_mb = 300
 embedding_model = "bge-small-en-v1.5"
 embedding_dims = 384
 vector_index = "sqlite-vec"
-enable_hnsw = false
 consolidation_cpu_percent = 5
 scheduler_granularity = 300
 

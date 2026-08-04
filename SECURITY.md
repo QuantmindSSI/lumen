@@ -48,7 +48,7 @@ Lumen takes security seriously. If you discover a vulnerability, please report i
 
 - SQLite WAL mode with configurable sync levels
 - File permissions enforced: `~/.lumen` should be `700`
-- Audit logs are append-only JSONL with structured entries
+- Audit logs are stored in the SQLite `audit_log` table with structured entries
 
 ## Known Limitations (Alpha)
 

@@ -191,8 +191,10 @@ def _load_beir_dataset(name: str, path: str):
 def _bm25_baseline(passages, queries, query_relevant_pids, k=50):
     """Independent rank-bm25 baseline."""
     import re
-
-    from rank_bm25 import BM25Okapi
+    try:
+        from rank_bm25 import BM25Okapi
+    except ImportError:
+        return [], [set() for _ in queries]
 
     tokenized = [re.findall(r"\w+", p.lower()) for p in passages]
     bm25 = BM25Okapi(tokenized)

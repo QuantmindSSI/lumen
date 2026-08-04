@@ -1,6 +1,6 @@
 """D1: Configuration Schema & Runtime Loader.
 
-Input wire: pydantic-settings, tomli, env vars
+Input wire: pydantic-settings, env vars
 Output wire: EVERY other task
 Secret sauce: Device-specific defaults (RPi5 vs Jetson vs generic)
 """

@@ -122,11 +122,6 @@ class _SizeLimitMiddleware:
                     break
             if content_length > self.max_bytes:
 
-                async def _send_413(msg):
-                    if msg["type"] == "http.response.start":
-                        msg["status"] = 413
-                        await send(msg)
-
                 await send(
                     {
                         "type": "http.response.start",

@@ -375,8 +375,10 @@ def _bootstrap_ci(values, n_bootstrap=N_BOOTSTRAP):
 def _bm25_baseline(passages, queries, query_relevant_pids, k=50):
     """Independent rank-bm25 baseline, not using Lumen's FTS5 table."""
     import re
-
-    from rank_bm25 import BM25Okapi
+    try:
+        from rank_bm25 import BM25Okapi
+    except ImportError:
+        return [], [set() for _ in queries]
 
     tokenized = [re.findall(r'\w+', p.lower()) for p in passages]
     bm25 = BM25Okapi(tokenized)

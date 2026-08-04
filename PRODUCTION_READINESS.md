@@ -104,8 +104,8 @@ Test suite passes at 72% coverage.
 
 ## Immediate Next Steps for v0.2.0-beta
 
-1. **Run TFC grid search** on a workstation (`python -m lumen.benchmarks.tfc.run`)
-2. **Run full BEIR evaluation** on a machine with >16 GB RAM (`python -m lumen.benchmarks.beir.run` with `NUM_PASSAGES = None`)
+1. **Run TFC grid search** on a workstation (`python -m benchmarks.tfc.run`)
+2. **Run full BEIR evaluation** on a machine with >16 GB RAM (`python -m benchmarks.beir.run` with `NUM_PASSAGES = None`)
 3. **100k-chunk stress test** — validate L3 budget eviction triggers at 85% RSS
 4. **Beam P2P review** — audit NaCl transport and trust model
 5. **Generate PGP key** and publish in `SECURITY.md`
