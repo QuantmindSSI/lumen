@@ -318,13 +318,20 @@ def _recall_at_k(retrieved, relevant, k):
     return len(set(retrieved[:k]) & relevant) / len(relevant)
 
 
-def _ndcg_at_k(retrieved, relevant, k):
+def _ndcg_at_k(retrieved, relevant, k, relevance_map=None):
     if not relevant:
         return 0.0
-    dcg = sum((2.0**1 - 1) / math.log2(i + 2) if cid in relevant else 0.0
-              for i, cid in enumerate(retrieved[:k]))
-    ideal = sum((2.0**1 - 1) / math.log2(i + 2)
-                for i in range(min(len(relevant), k)))
+    dcg = 0.0
+    for i, cid in enumerate(retrieved[:k]):
+        if cid in relevant:
+            rel = relevance_map.get(cid, 1) if relevance_map else 1
+            dcg += (2.0**rel - 1) / math.log2(i + 2)
+    ideal_rels = sorted(
+        [relevance_map.get(cid, 1) for cid in relevant] if relevance_map else [1] * len(relevant),
+        reverse=True,
+    )
+    ideal = sum((2.0**rel - 1) / math.log2(i + 2)
+                for i, rel in enumerate(ideal_rels[:k]))
     return dcg / ideal if ideal > 0 else 0.0
 
 

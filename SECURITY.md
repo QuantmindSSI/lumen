@@ -9,11 +9,9 @@
 
 ## Reporting a Vulnerability
 
-Lumen takes security seriously. If you discover a vulnerability, please report it responsibly.
+Lumen takes security seriously. If you discover a vulnerability, please report it via the GitHub Security Advisory page or email.
 
-**Email:** security@lumen.ai
-
-A PGP key is not yet published. For sensitive reports, request the key via email.
+**Report via:** https://github.com/QuantumindSSI/lumen/security/advisories/new
 
 ### What to Include
 

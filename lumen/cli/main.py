@@ -186,7 +186,7 @@ def memory_retrieve(
         raise typer.Exit(1) from exc
     graph = GraphChannel(conn)
     pipeline = SearchPipeline(conn, config, tfc=_state_tfc, embedder=embedder, graph=graph)
-    results = pipeline.execute(query)
+    results = pipeline.execute(query, k=max(top_k * 2, 10))
     if not results:
         console.print("[yellow]No memories found.[/yellow]")
         return

@@ -2,6 +2,8 @@
 
 Input wire: Python stdlib, APScheduler
 Output wire: A11, all structlog sinks
+
+NOTE: This module is not yet imported by any code path (production or tests).
 """
 
 from __future__ import annotations

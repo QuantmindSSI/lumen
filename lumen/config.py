@@ -61,7 +61,6 @@ class LumenConfig(BaseSettings):
     pii_detection_enabled: bool = True
     pii_redaction_mode: Literal["block", "redact", "hash"] = "redact"
     pii_custom_patterns: str = ""
-    release_threshold: float = 0.05
     tfc_novelty_threshold: float = 0.7
     tfc_repetition_threshold: float = 0.7
     tfc_context_pressure_threshold: float = 0.9

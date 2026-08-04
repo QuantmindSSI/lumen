@@ -45,7 +45,7 @@ def fuse_and_rerank(
     """
     Stage 3: Reciprocal Rank Fusion + V(m) + FRQAD rerank + recency boost.
     """
-    k_rrf = 60
+    k_rrf = 60  # standard RRF constant from Cormack et al. (2009)
 
     # Build candidate pool with RRF
     rrfs: dict[int, float] = {}

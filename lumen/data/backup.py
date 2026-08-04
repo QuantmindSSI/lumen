@@ -1,7 +1,13 @@
-from pathlib import Path
-import sqlite3
+"""Database backup utility.
+
+NOTE: This module is not yet imported by any production code path.
+Use test_backup.py to exercise the backup function manually.
+"""
+
 import shutil
+import sqlite3
 from datetime import datetime
+from pathlib import Path
 
 
 def backup_database(db_path: Path, backup_dir: Path | None = None) -> Path:
@@ -13,9 +19,8 @@ def backup_database(db_path: Path, backup_dir: Path | None = None) -> Path:
     src = str(db_path)
     dst = str(dest)
     # Use SQLite online backup API
-    with sqlite3.connect(src) as source:
-        with sqlite3.connect(dst) as target:
-            source.backup(target)
+    with sqlite3.connect(src) as source, sqlite3.connect(dst) as target:
+        source.backup(target)
     # Copy WAL/shm if present
     for ext in ("-wal", "-shm"):
         src_ext = db_path.with_suffix(db_path.suffix + ext)

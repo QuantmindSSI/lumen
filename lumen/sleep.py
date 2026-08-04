@@ -66,29 +66,62 @@ class SleepScheduler:
         if not self._should_run():
             return
         logger.info("sleep_consolidation_start")
+        conn = None
+        batcher = None
         try:
             from lumen.data.schema import get_connection
-            from lumen.force.mnemonic.forgetting_l1_decay import ebbinghaus_decay
-            from lumen.sovereign.wear import WearAwareBatcher
-
             conn = get_connection(self.config)
-            try:
-                batcher = WearAwareBatcher(conn)
-                run_consolidation_pass(self.config, batcher=batcher)
-                ebbinghaus_decay(conn, batcher=batcher)
-                from lumen.force.mnemonic.forgetting_l3_budget import budget_curated_eviction
-                budget_curated_eviction(conn, self.config, batcher=batcher)
-                from lumen.curiosity import curiosity_probe
-                curiosity_probe(conn, limit=10)
-                if batcher.queue:
-                    batcher.flush_sync(list(batcher.queue))
-                    batcher.queue.clear()
-            finally:
-                conn.close()
-        except Exception as exc:  # noqa: BLE001
-            logger.error("sleep_consolidation_error", error=str(exc))
-        else:
-            logger.info("sleep_consolidation_end")
+        except Exception as exc:
+            logger.error("sleep_consolidation_error", stage="connect", error=str(exc))
+            return
+
+        try:
+            from lumen.sovereign.wear import WearAwareBatcher
+            batcher = WearAwareBatcher(conn)
+        except Exception as exc:
+            logger.error("sleep_consolidation_error", stage="batcher_init", error=str(exc))
+            conn.close()
+            return
+
+        try:
+            run_consolidation_pass(self.config, batcher=batcher)
+        except Exception as exc:
+            logger.error("sleep_consolidation_error", stage="consolidation", error=str(exc))
+            conn.close()
+            return
+
+        try:
+            from lumen.force.mnemonic.forgetting_l1_decay import ebbinghaus_decay
+            ebbinghaus_decay(conn, batcher=batcher)
+        except Exception as exc:
+            logger.error("sleep_consolidation_error", stage="l1_decay", error=str(exc))
+            conn.close()
+            return
+
+        try:
+            from lumen.force.mnemonic.forgetting_l3_budget import budget_curated_eviction
+            budget_curated_eviction(conn, self.config, batcher=batcher)
+        except Exception as exc:
+            logger.error("sleep_consolidation_error", stage="l3_eviction", error=str(exc))
+            conn.close()
+            return
+
+        try:
+            from lumen.curiosity import curiosity_probe
+            curiosity_probe(conn, limit=10)
+        except Exception as exc:
+            logger.error("sleep_consolidation_error", stage="curiosity", error=str(exc))
+
+        try:
+            if batcher and batcher.queue:
+                batcher.flush_sync(list(batcher.queue))
+                batcher.queue.clear()
+        except Exception as exc:
+            logger.error("sleep_consolidation_error", stage="flush", error=str(exc))
+        finally:
+            conn.close()
+
+        logger.info("sleep_consolidation_end")
 
     def _opportunistic_check(
         self,

@@ -257,7 +257,7 @@ ruff check lumen/ tests/             # Lint
 
 - [GitHub Discussions](https://github.com/QuantumindSSI/lumen/discussions)
 - [Issue Tracker](https://github.com/QuantumindSSI/lumen/issues)
-- Security: `security@lumen.ai`
+- [Security Advisories](https://github.com/QuantumindSSI/lumen/security/advisories)
 - Matrix: `#lumen:matrix.org`
 
 ---

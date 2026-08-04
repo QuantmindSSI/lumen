@@ -1,6 +1,8 @@
 """D16: Real User Profile.
 
 Serialize embeddings as BLOBs using numpy.tobytes().
+
+NOTE: This module is not yet imported by any production code path.
 """
 
 import json

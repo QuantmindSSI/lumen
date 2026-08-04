@@ -27,12 +27,10 @@ Output: benchmarks/e2e/results/e2e_results.json + .md
 from __future__ import annotations
 
 import json
-import math
 import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 
@@ -132,12 +130,10 @@ SESSIONS = [
                     {
                         "query": "What cloud provider does AlphaCorp use for primary hosting and what is their main database setup?",
                         "expected_fact_ids": [0],
-                        "tolerance": 0.3,
                     },
                     {
                         "query": "How many transactions per hour does BetaFinance process at peak?",
                         "expected_fact_ids": [3],
-                        "tolerance": 0.3,
                     },
                 ],
             },
@@ -148,12 +144,10 @@ SESSIONS = [
                     {
                         "query": "What was AlphaCorp CISO's deadline for fixing critical vulnerabilities and how many were IAM-related?",
                         "expected_fact_ids": [1],
-                        "tolerance": 0.3,
                     },
                     {
                         "query": "What issues did BetaFinance's 2024 audit find regarding their secrets management?",
                         "expected_fact_ids": [5],
-                        "tolerance": 0.3,
                     },
                 ],
             },
@@ -188,12 +182,10 @@ SESSIONS = [
                     {
                         "query": "What is the validation accuracy of the latest model and how does it compare to the previous version?",
                         "expected_fact_ids": [0],
-                        "tolerance": 0.3,
                     },
                     {
                         "query": "What hyperparameter values did Optuna select as optimal for this training run?",
                         "expected_fact_ids": [2],
-                        "tolerance": 0.3,
                     },
                 ],
             },
@@ -204,12 +196,10 @@ SESSIONS = [
                     {
                         "query": "What is the INT8 model size after quantization and what was the accuracy impact?",
                         "expected_fact_ids": [3],
-                        "tolerance": 0.3,
                     },
                     {
                         "query": "How is data drift monitored and what is the current alert threshold?",
                         "expected_fact_ids": [4],
-                        "tolerance": 0.3,
                     },
                 ],
             },
@@ -244,12 +234,10 @@ SESSIONS = [
                     {
                         "query": "What was the primary endpoint of the TRILUMINATE trial and was it met?",
                         "expected_fact_ids": [0],
-                        "tolerance": 0.3,
                     },
                     {
                         "query": "For which cancer type did KEYNOTE-024 establish pembrolizumab as first-line therapy and what was the required PD-L1 threshold?",
                         "expected_fact_ids": [4],
-                        "tolerance": 0.3,
                     },
                 ],
             },
@@ -260,12 +248,10 @@ SESSIONS = [
                     {
                         "query": "What quality-of-life metric was used in TRILUMINATE and what was the between-group difference?",
                         "expected_fact_ids": [2],
-                        "tolerance": 0.3,
                     },
                     {
                         "query": "What genomic biomarker was validated by KEYNOTE-158 for tissue-agnostic pembrolizumab approval?",
                         "expected_fact_ids": [5],
-                        "tolerance": 0.3,
                     },
                 ],
             },
@@ -300,12 +286,10 @@ SESSIONS = [
                     {
                         "query": "What key features were added in Python 3.13 and when was it released?",
                         "expected_fact_ids": [0],
-                        "tolerance": 0.3,
                     },
                     {
                         "query": "Who discovered the xz utils backdoor and what was the immediate symptom they noticed?",
                         "expected_fact_ids": [3],
-                        "tolerance": 0.3,
                     },
                 ],
             },
@@ -316,12 +300,10 @@ SESSIONS = [
                     {
                         "query": "What new database features did Django 5.1 introduce?",
                         "expected_fact_ids": [1],
-                        "tolerance": 0.3,
                     },
                     {
                         "query": "What was the root cause of the CrowdStrike outage and how many devices were affected?",
                         "expected_fact_ids": [5],
-                        "tolerance": 0.3,
                     },
                 ],
             },
@@ -356,12 +338,10 @@ SESSIONS = [
                     {
                         "query": "What payment providers does the payment gateway support and how does it ensure safe retries?",
                         "expected_fact_ids": [0],
-                        "tolerance": 0.3,
                     },
                     {
                         "query": "What is the total pipeline time from commit to production deployment?",
                         "expected_fact_ids": [3],
-                        "tolerance": 0.3,
                     },
                 ],
             },
@@ -372,12 +352,10 @@ SESSIONS = [
                     {
                         "query": "What notification channels does notify-hub support and what are the priority tiers?",
                         "expected_fact_ids": [1],
-                        "tolerance": 0.3,
                     },
                     {
                         "query": "What scaling mechanisms are used and what is the cold start time?",
                         "expected_fact_ids": [5],
-                        "tolerance": 0.3,
                     },
                 ],
             },
@@ -412,12 +390,10 @@ SESSIONS = [
                     {
                         "query": "What is EcoCoat's Scope 1 emissions for 2023 and what is their main source?",
                         "expected_fact_ids": [0],
-                        "tolerance": 0.3,
                     },
                     {
                         "query": "How many solar farms does SolarGrid operate and what is their total capacity?",
                         "expected_fact_ids": [3],
-                        "tolerance": 0.3,
                     },
                 ],
             },
@@ -428,12 +404,10 @@ SESSIONS = [
                     {
                         "query": "What are EcoCoat's targeted emission reductions by 2026 and through which initiatives?",
                         "expected_fact_ids": [1],
-                        "tolerance": 0.3,
                     },
                     {
                         "query": "What battery storage does the Antelope Valley project include and what is its duration?",
                         "expected_fact_ids": [4],
-                        "tolerance": 0.3,
                     },
                 ],
             },
@@ -468,12 +442,10 @@ SESSIONS = [
                     {
                         "query": "What replication feature did PostgreSQL 16 add and what backup feature did PostgreSQL 17 add?",
                         "expected_fact_ids": [0],
-                        "tolerance": 0.3,
                     },
                     {
                         "query": "What new expiration capability did Redis 7.4 introduce?",
                         "expected_fact_ids": [3],
-                        "tolerance": 0.3,
                     },
                 ],
             },
@@ -484,12 +456,10 @@ SESSIONS = [
                     {
                         "query": "What are the key PostgreSQL configuration values for the production cluster and what is the RPO?",
                         "expected_fact_ids": [2],
-                        "tolerance": 0.3,
                     },
                     {
                         "query": "What is the Redis migration strategy for the 7.4 upgrade and what is the rollback plan?",
                         "expected_fact_ids": [5],
-                        "tolerance": 0.3,
                     },
                 ],
             },
@@ -738,7 +708,7 @@ def run_e2e_benchmark():
     print(f"\n[INFO] Results written to {json_path} and {md_path}")
 
     # Console summary
-    print(f"\n=== E2E Memory Quality Summary ===")
+    print("\n=== E2E Memory Quality Summary ===")
     print(f"Recall@1:   {agg['recall_1']['mean']:.4f} [CI: {agg['recall_1']['ci95_lo']:.4f}-{agg['recall_1']['ci95_hi']:.4f}]")
     print(f"Recall@5:   {agg['recall_5']['mean']:.4f} [CI: {agg['recall_5']['ci95_lo']:.4f}-{agg['recall_5']['ci95_hi']:.4f}]")
     print(f"Recall@10:  {agg['recall_10']['mean']:.4f} [CI: {agg['recall_10']['ci95_lo']:.4f}-{agg['recall_10']['ci95_hi']:.4f}]")

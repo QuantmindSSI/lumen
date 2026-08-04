@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS room (
     room_id     INTEGER PRIMARY KEY,
     name        TEXT NOT NULL UNIQUE,          -- e.g. "preferences", "travel:japan"
     created_at  INTEGER DEFAULT (unixepoch()),
-    last_entry_at INTEGER,
-    locus_count INTEGER DEFAULT 0,
+    last_entry_at INTEGER,                     -- not yet updated by any code path
+    locus_count INTEGER DEFAULT 0,            -- not yet updated by any code path
     room_type   TEXT CHECK(room_type IN ('domain','project','person','ephemeral')),
     topological_order REAL DEFAULT 0.0         -- for palace map rendering
 );
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS locus (
     room_id     INTEGER NOT NULL REFERENCES room(room_id) ON DELETE CASCADE,
     name        TEXT NOT NULL,
     description TEXT,
-    vector_mean BLOB,                          -- cached centroid of resident chunks (optical degrade)
+    vector_mean BLOB,                          -- cached centroid (not yet populated)
     created_at  INTEGER DEFAULT (unixepoch()),
     access_count INTEGER DEFAULT 0,
     last_access_at INTEGER,

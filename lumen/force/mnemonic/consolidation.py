@@ -3,7 +3,8 @@
 Input wire: D2 (event_buffer), A5 (provenance), A6 (store), B2 (embed),
             D9 (local_llm), D3 (feedback_log)
 Output wire: C5 (context assembly), D16 (user_profile)
-Secret sauce: 6-operation MARS lifecycle applied during idle time.
+Secret sauce: MARS lifecycle applied during idle time (narrative generation
+requires LocalLLM; dedup merging runs without it).
 """
 
 from __future__ import annotations

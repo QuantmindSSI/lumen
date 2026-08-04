@@ -75,6 +75,6 @@ This document tracks the remaining work to move Lumen from beta (`v0.1.x-alpha`)
 
 As stated in the whitepaper:
 
-> Lumen is a feature-complete beta framework for sovereign agentic memory with unique lifecycle management and native integrations; its retrieval quality is competitive in controlled settings but not yet validated at leaderboard scale.
+> Lumen is an alpha framework for sovereign agentic memory with unique lifecycle management and native integrations; its retrieval quality is competitive in controlled settings but not yet validated at leaderboard scale.
 
 This roadmap is about closing the gap between that honest claim and a production-ready system.
