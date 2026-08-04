@@ -54,9 +54,9 @@ Lumen takes security seriously. If you discover a vulnerability, please report i
 
 ## Known Limitations (Alpha)
 
-1. **No encryption at rest** — config fields (`encryption_key`, `encryption_provider`) exist but are not yet wired to the SQLite layer. Planned for v0.2.0. Use OS-level disk encryption (FileVault, BitLocker, LUKS) as a stopgap.
+1. **No encryption at rest** — Lumen stores data in plaintext SQLite. The `encryption_provider` and `encryption_key` config fields were removed in v0.1.0-alpha to avoid false security posture. Use OS-level disk encryption (FileVault, BitLocker, LUKS) as a stopgap. SQLCipher integration is planned for v0.2.0.
 2. **API authentication is opt-in** — `X-API-Key` header validation is implemented but disabled when `LUMEN_API_KEY` is unset. Set it before exposing the server to any network.
-3. **P2P sharing not audited** — Beam protocol is experimental; do not use across untrusted networks
+3. **P2P sharing is plaintext** — Beam protocol transmits over TCP without transport encryption. It is intended for trusted household LANs only. Do not expose Beam to untrusted networks.
 
 ## Dependency Security
 

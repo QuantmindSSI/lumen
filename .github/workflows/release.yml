@@ -13,10 +13,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-defaults:
-  run:
-    working-directory: ./lumen
-
 jobs:
   build:
     name: Build Distribution
@@ -41,7 +37,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-dist
-          path: lumen/dist/*
+          path: dist/*
           retention-days: 7
 
   github-release:
@@ -56,12 +52,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: release-dist
-          path: lumen/dist
+          path: dist
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: lumen/dist/*
+          files: dist/*
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
@@ -78,10 +74,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: release-dist
-          path: lumen/dist
+          path: dist
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: lumen/dist
+          packages-dir: dist
           password: ${{ secrets.PYPI_API_TOKEN }}

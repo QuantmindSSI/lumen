@@ -360,4 +360,4 @@ exec /usr/local/bin/devin-start
 3. Seed initial memories: `lumen illuminate` (interactive onboarding wizard).
 4. Iterate on room taxonomy for your team.
 
-For programmatic Python usage, see `lumen/integrations/langchain.py` and `lumen/lumen/conversation.py`.
+For programmatic Python usage, see `lumen/integrations/langchain.py` and `lumen/conversation.py`.

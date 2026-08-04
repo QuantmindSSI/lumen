@@ -34,7 +34,7 @@ Lumen is a beta-ready framework with the following concrete capabilities:
 
 - **Native LangGraph integration** (`lumen.integrations.langgraph`): a `LumenCheckpointSaver` implementing LangGraph's `BaseCheckpointSaver` protocol, plus a `LumenGraphStore` for cross-thread long-term memory — enabling sovereign graph-agent state persistence without external checkpoints.
 - **Model Context Protocol (MCP) server**: exposes search, store, assemble, turn, feedback, status, and dashboard operations to OpenCode, Claude Desktop, and GitHub Copilot via stdio transport.
-- **Beam P2P sharing protocol**: household-local, encrypted, ephemeral memory sharing with permission decay, service discovery via Zeroconf, and NaCl encryption.
+- **Beam P2P sharing protocol**: household-local, plaintext memory sharing with permission decay and service discovery via Zeroconf. NaCl transport encryption is planned for a future milestone.
 - **Five first-party benchmark suites**: retrieval (R@k, nDCG, MAP, MRR), forgetting (90-day survival curves, interference precision), performance (latency p50/p95/p99, footprint), palace navigation efficiency (room-constrained speedup vs. global), and end-to-end memory quality (multi-turn conversational recall with 7 personas, 28 queries).
 - **Domain corpus and seeding**: a hand-crafted 111-chunk, 8-room knowledge base used for both palace seeding and benchmarking.
 - **Hardened API surface**: FastAPI server with API-key authentication, slowapi rate limiting, CORS middleware, request-size limits, request-ID propagation, and a global unhandled-exception handler.
@@ -159,7 +159,7 @@ This enables agents running inside Claude Desktop or OpenCode to read from and w
 Beam is a household-local P2P memory sharing protocol with the following security model:
 
 - **Scope**: LAN-only, discovered via Zeroconf (`_lumen-beam._tcp`).
-- **Encryption**: NaCl `PublicKey`/`PrivateKey` box encryption when `pynacl` is available; plaintext fallback with logged warnings.
+- **Encryption**: Transport encryption over TCP is not yet implemented. Beam transmits plaintext and is intended for trusted household LANs only. NaCl box encryption is planned for a future milestone.
 - **Permission decay**: shared memories receive a time-to-live and degrade automatically.
 - **Transport**: length-prefixed msgspec JSON over asyncio TCP streams.
 
@@ -357,7 +357,7 @@ The BEIR subset evaluation harness is described in Section 4.2. Full empirical r
 | 5 | PNE routing is an upper bound. | **Partially addressed** | Keyword-based router remains default, but an embedding-aware logistic regression classifier (`IntentRouter.train_lr`) is implemented and can be persisted/loaded. No automatic training pipeline yet. |
 | 6 | Small-N bootstrap CIs. | **Open** | See Section 4 consolidated callout (3 seeds, 28 queries, 41 ratings, 20 ablation queries). |
 | 7 | Cross-system comparison is heterogeneous. | **Open** | Shared harness with identical embedders still pending. |
-| 8 | Multi-user, encryption-at-rest, P2P not implemented. | **Partially addressed** | Beam P2P is implemented but not hardened for adversarial networks. Multi-user tenant ID support is present in API and schema. Encryption-at-rest config fields exist but are not yet wired to the SQLite layer. |
+| 8 | Multi-user, encryption-at-rest, P2P not implemented. | **Partially addressed** | Beam P2P is implemented but not hardened for adversarial networks. Multi-user tenant ID support is present in API and schema. Encryption-at-rest is deferred to v0.2.0; use OS-level disk encryption as a stopgap. |
 | 9 | Optical degradation not validated per level. | **Partially addressed** | The optical-level increment bug is fixed, but retrieval accuracy at FP16/INT8/BINARY has not been independently measured. |
 | 10 | BM25 fails on punctuation-heavy queries. | **Fixed** | FTS5 lexical search now handles apostrophes, periods, and punctuation via query sanitization. |
 | 11 | L2 interference skipped in sqlite-vec-only mode. | **Fixed** | Interference checker now reads from `vec_chunks` when `vec_fallback` is empty. |

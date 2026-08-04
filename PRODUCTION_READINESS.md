@@ -21,26 +21,24 @@ This report documents the execution of the production-readiness roadmap. **Phase
 | P1.1 Re-access reinforcement | Docs said "Open / planned" | Updated README, whitepaper v2, SECURITY.md to reflect it is **implemented** in `search.py` |
 | P1.2 Intent router (LR) | Docs said "No trained classifier" | Updated to **Partially addressed** — `IntentRouter.train_lr()` and `classify_with_embedding()` are live in `intent.py` |
 | API auth | Mentioned only in SECURITY.md as "not yet" | Documented in DEPLOYMENT.md §5.1 with `X-API-Key` and `X-Tenant-ID` examples |
-| Encryption inconsistency | README marked M4 encryption as ✅ | Fixed roadmap to show encryption as 🔄 in progress |
+| Encryption inconsistency | README marked M4 encryption as ✅ | Config fields removed from code; all docs now consistently state "not yet implemented; use OS-level encryption" |
 
 ### 1.2 SQLite Encryption-at-Rest
 **Changes:**
 - Modified `lumen/data/schema.py`:
   - Added `_enforce_permissions()` — enforces `700` on `~/.lumen`, `600` on DB/config files
-  - Added `_open_sqlcipher()` — SQLCipher support via `pysqlcipher3`
-  - Wired `encryption_provider` and `encryption_key` config fields into `get_connection()`
-  - Added runtime warnings when encryption is disabled
-- Updated `DEPLOYMENT.md` §5.2 with three encryption options:
-  - **Option A:** SQLCipher (`LUMEN_ENCRYPTION_PROVIDER=sqlcipher`)
-  - **Option B:** OS-level disk encryption (FileVault, BitLocker, LUKS)
-  - **Option C:** No encryption (development only, logs warning)
-- Updated `SECURITY.md` to reflect that auth is opt-in and encryption config fields exist
+  - Removed `_open_sqlcipher()` and dead encryption config fields — avoided false security posture
+  - `get_connection()` now documents that encryption is not yet implemented
+  - Startup log recommends OS-level disk encryption (FileVault, BitLocker, LUKS)
+- Removed `encryption_provider` and `encryption_key` from `LumenConfig` (fields declared but never wired)
+- Updated `DEPLOYMENT.md` §5.2, `SECURITY.md`, `README.md`, and `ROADMAP.md` to consistently state encryption is not yet implemented
+- SQLCipher integration is planned for v0.2.0
 
 **Verification:**
 ```bash
 $ python3 -c "from lumen.data.schema import get_connection; from lumen.config import LumenConfig; get_connection(LumenConfig())"
 2026-08-03 ... [warning] encryption_at_rest_disabled
-  recommendation='Set LUMEN_ENCRYPTION_PROVIDER=sqlcipher and LUMEN_ENCRYPTION_KEY for production'
+  recommendation='Use OS-level disk encryption (FileVault, BitLocker, LUKS) for production'
 ```
 Test suite passes at 72% coverage.
 
@@ -123,7 +121,7 @@ Test suite passes at 72% coverage.
 | `SECURITY.md` | Updated known limitations; clarified auth is opt-in |
 | `DEPLOYMENT.md` | Added §5.1 API auth, §5.2 encryption, §5.3 file permissions; renumbered sections |
 | `docs/Lumen_Agentic_Memory_Whitepaper_v2.md` | Marked P1.1, P1.2, encryption as partially addressed; updated open work list |
-| `lumen/data/schema.py` | Added SQLCipher support, file permission enforcement, encryption warnings |
+| `lumen/data/schema.py` | Removed dead encryption code; consolidated to plaintext SQLite with OS-level encryption guidance |
 | `ROADMAP.md` | Created production-readiness checklist |
 | `benchmarks/optical/run.py` | **New** — optical degradation benchmark |
 | `benchmarks/tfc/run.py` | **New** — TFC sensitivity analysis |

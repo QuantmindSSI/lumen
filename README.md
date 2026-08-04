@@ -51,16 +51,22 @@ Lumen is a **local-first memory store for LLM agents** that runs entirely on you
 ### Install
 
 ```bash
+# From PyPI (when published)
 pip install lumen
 
+# From source
+git clone https://github.com/QuantumindSSI/lumen.git
+cd lumen
+pip install -e ".[dev]"
+
 # Optional: local LLM support for sleep-phase consolidation
-pip install lumen[local-llm]
+pip install llama-cpp-python
 
 # Optional: LangChain integration
-pip install lumen[langchain]
+pip install langchain
 
 # Optional: MCP server for OpenCode / Claude Desktop
-pip install lumen[mcp]
+pip install mcp
 ```
 
 ### Initialize
@@ -72,29 +78,43 @@ lumen init --device rpi5
 # On a generic x86 server
 lumen init --device generic
 
-# Or use the interactive wizard
+# Or use the interactive wizard (requires spacy: python -m spacy download en_core_web_sm)
 lumen illuminate
 ```
 
 ### Store a Memory
 
 ```python
-import lumen
+from lumen.force.mnemonic.store import store_memory
+from lumen.data.schema import get_connection
+from lumen.config import LumenConfig
 
-lumen.memory.store(
+config = LumenConfig()
+conn = get_connection(config)
+chunk_id = store_memory(
+    conn,
     content="User prefers dark mode and large fonts",
-    room="preferences",
-    source_type="user_input"
+    room_name="preferences",
+    source_type="user_input",
+    config=config,
 )
+conn.close()
 ```
 
 ### Retrieve Context
 
 ```python
-context = lumen.context.assemble(
+from lumen.conversation import ConversationMemory
+from lumen.data.schema import get_connection
+from lumen.config import LumenConfig
+
+config = LumenConfig()
+conn = get_connection(config)
+memory = ConversationMemory(config=config, conn=conn)
+turn = memory.retrieve_and_assemble(
     query="What UI settings does the user like?"
 )
-print(context.window)
+print(turn.assembled_context)
 ```
 
 ### Check Status
@@ -102,9 +122,12 @@ print(context.window)
 ```bash
 $ lumen status
 
-  Structured Store: 3 rooms, 56 chunks
-  Context Budget: 2,048 tokens
-  TFC: e=0.50 a=0.50 τ=7.0d r=3
+Lumen Status
+Device: generic
+Rooms: 3
+Active chunks: 56
+Context budget: 2048 tokens
+TFC → e=0.50 a=0.50 tau=7.0 r=3
 ```
 
 ---
@@ -202,7 +225,7 @@ Lumen includes a self-hosted web dashboard at `/dashboard`:
 
 ```bash
 lumen serve
-# Open http://localhost:8000/dashboard
+# Open http://localhost:8848/dashboard
 ```
 
 The dashboard shows live palace topology, TFC state, and memory health metrics.
@@ -221,7 +244,7 @@ Lumen is **beta software** under active development. Key known limitations:
 | Retrieval benchmarks | **Internal only** | No full BEIR/MTEB leaderboard submission yet. Current evaluation is on synthetic corpora and BEIR subsets |
 | Intent routing | **Partially addressed** | Keyword rules with optional trained logistic regression classifier (`intent.py`). LR requires manual training |
 | Multi-user / P2P | **Experimental** | Beam P2P is household-local only; not hardened for adversarial networks |
-| Encryption-at-rest | **In progress** | Config fields (`encryption_key`, `encryption_provider`) exist. SQLCipher and Fernet providers are planned for v0.2.0 |
+| Encryption-at-rest | **Not implemented** | No built-in encryption. Use OS-level disk encryption (FileVault, BitLocker, LUKS) for sensitive deployments. SQLCipher support is planned for v0.2.0 |
 
 ---
 

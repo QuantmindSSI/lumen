@@ -50,7 +50,7 @@ Open a GitHub Discussion first for major features. For small enhancements, an is
 
 ```bash
 git clone https://github.com/QuantumindSSI/lumen.git
-cd lumen/lumen
+cd lumen
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
@@ -115,7 +115,7 @@ Rooms are top-level categories in the palace. To add one:
 
 1. Define in `lumen/data/schema.sql` (if schema change needed)
 2. Add retrieval path in `lumen/force/mnemonic/retrieval_*.py`
-3. Register in `lumen/lumen/search.py` pipeline
+3. Register in `lumen/search.py` pipeline
 4. Add test in `tests/test_retrieval_*.py`
 5. Document in `docs/palace.md`
 
@@ -124,7 +124,7 @@ Rooms are top-level categories in the palace. To add one:
 The forgetting stack is L1-L4. If you need L5:
 
 1. Create `lumen/force/mnemonic/forgetting_l5_*.py`
-2. Hook into `lumen/lumen/sleep.py` consolidation scheduler
+2. Hook into `lumen/sleep.py` consolidation scheduler
 3. Add compliance audit logging
 4. Write test in `tests/test_forgetting_*.py`
 

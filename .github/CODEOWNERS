@@ -5,13 +5,13 @@
 /.github/ @QuantumindSSI/maintainers
 
 # Core source code
-/lumen/lumen/ @QuantumindSSI/maintainers
+/lumen/ @QuantumindSSI/maintainers
 
 # Tests
-/lumen/tests/ @QuantumindSSI/maintainers
+/tests/ @QuantumindSSI/maintainers
 
 # Documentation
 *.md @QuantumindSSI/maintainers
 
 # Package and build configuration
-/lumen/pyproject.toml @QuantumindSSI/maintainers
+/pyproject.toml @QuantumindSSI/maintainers

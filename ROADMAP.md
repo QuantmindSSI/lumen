@@ -10,14 +10,13 @@ This document tracks the remaining work to move Lumen from beta (`v0.1.x-alpha`)
 - [x] **P1.1 Re-access reinforcement** — Code landed in `search.py`. Docs incorrectly listed as "Open". Update README + whitepaper.
 - [x] **P1.2 Intent router (LR classifier)** — Code landed in `intent.py`. Docs incorrectly listed as "Open". Update README + whitepaper.
 - [ ] **API authentication** — `X-API-Key` middleware exists in `api/server.py`. Verify config support and document properly.
-- [ ] **Encryption-at-rest inconsistency** — README marks M4 encryption as ✅, but SECURITY.md and config say "Not yet / planned". Fix docs and implement wiring.
+- [x] **Encryption-at-rest inconsistency** — Fixed. Config fields removed from code, all docs aligned to state "not yet implemented, use OS-level encryption."
 
 ### 1.2 SQLite Encryption-at-Rest
-- [ ] Wire `encryption_key` + `encryption_provider` config fields into `get_connection()`
-- [ ] Support SQLCipher (`PRAGMA key = ...`) as primary provider
+- [ ] Implement SQLCipher integration (`PRAGMA key = ...`) in `get_connection()`
 - [ ] Support Fernet field-level encryption fallback for standard sqlite3
-- [ ] Add OS-level encryption guidance (FileVault, BitLocker, LUKS) in DEPLOYMENT.md
-- [ ] File permissions enforcement: `~/.lumen` must be `700`
+- [x] OS-level encryption guidance (FileVault, BitLocker, LUKS) documented in DEPLOYMENT.md and SECURITY.md
+- [x] File permissions enforcement: `~/.lumen` is `700` by default
 
 ### 1.3 API Hardening
 - [ ] Document `X-API-Key` and `X-Tenant-ID` headers in API docs
@@ -60,9 +59,9 @@ This document tracks the remaining work to move Lumen from beta (`v0.1.x-alpha`)
 - [ ] Verify L3 budget eviction triggers correctly at 85% RSS
 
 ### 3.2 P2P / Beam Security Audit
+- [ ] Implement NaCl transport encryption (currently plaintext — documented as trusted-LAN only)
 - [ ] Harden Beam protocol for adversarial networks
-- [ ] Add NaCl transport encryption verification
-- [ ] Document trust model and household-local limitation
+- [x] Document trust model and household-local limitation
 
 ### 3.3 Release Engineering
 - [ ] PGP key for vulnerability reporting

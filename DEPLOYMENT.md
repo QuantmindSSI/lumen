@@ -55,7 +55,7 @@ pip install lumen
 
 # Or install from source
 git clone https://github.com/QuantumindSSI/lumen.git
-cd lumen/lumen
+cd lumen
 pip install -e ".[dev]"
 ```
 
@@ -78,7 +78,7 @@ pip install llama-cpp-python
 
 ```bash
 # Build
-docker build -t lumen:latest ./lumen
+docker build -t lumen:latest .
 
 # Run (production)
 docker run -d \
@@ -91,7 +91,7 @@ docker run -d \
   lumen:latest
 
 # Or use docker-compose
-docker compose -f lumen/docker-compose.yml up -d
+docker compose up -d
 ```
 
 **docker-compose.yml** (provided in repo):
@@ -99,7 +99,7 @@ docker compose -f lumen/docker-compose.yml up -d
 version: "3.8"
 services:
   lumen:
-    build: ./lumen
+    build: .
     ports:
       - "8848:8848"
     volumes:
@@ -192,21 +192,18 @@ EOF
 
 ## 4. Health Checks & Monitoring
 
-### 4.1 API Health Endpoint
+### 4.1 API Status Endpoint
 
 ```bash
-# Default health check
-curl http://localhost:8848/health
+# Default status
+curl http://localhost:8848/status
 
 # Expected response:
-{
-  "status": "ok",
-  "device": "generic",
-  "palace_rooms": 12,
-  "active_chunks": 2341,
-  "context_usage": "3.2K / 4K tokens",
-  "tfc": {"e": 0.62, "a": 0.44, "tau": "7d", "r": 3}
-}
+# {"rooms": 12, "active_chunks": 2341, "tfc": {"e": 0.62, "a": 0.44, "tau": 7.0, "r": 3}, "embedding_model_available": true}
+
+# Liveness probe
+curl http://localhost:8848/health
+# {"status": "ok"}
 ```
 
 ### 4.2 CLI Status
@@ -215,11 +212,13 @@ curl http://localhost:8848/health
 lumen status
 
 # Output:
-#   ⚡ Twin-Force Controller: ACTIVE
-#     Memory Palace: 12 rooms, 147 loci, 2,341 chunks
-#     Context Window: 3.2K tokens (budget: 4K)
-#     Last consolidation: 3m ago
-#     Forgetting queue: 18 items pending
+# Lumen Status
+# Device: generic
+# Rooms: 12
+# Active chunks: 2341
+# Context budget: 2048 tokens
+# TFC → e=0.62 a=0.44 tau=7.0 r=3
+```
 ```
 
 ### 4.3 Log Monitoring
@@ -267,25 +266,7 @@ curl -H "X-API-Key: $LUMEN_API_KEY" \
 
 ### 5.2 Encryption at Rest
 
-#### Option A: SQLCipher (Recommended)
-
-```bash
-# 1. Install SQLCipher bindings
-pip install pysqlcipher3
-
-# 2. Set encryption provider and key
-export LUMEN_ENCRYPTION_PROVIDER="sqlcipher"
-export LUMEN_ENCRYPTION_KEY="$(openssl rand -hex 32)"
-
-# 3. Start Lumen (database will be encrypted on first access)
-lumen serve
-```
-
-> **Important:** Back up your encryption key separately. Losing it means losing all data.
-
-#### Option B: OS-Level Disk Encryption (Production Default)
-
-If SQLCipher is not available, use OS-level full-disk encryption:
+Lumen does not yet implement built-in database encryption. Use OS-level full-disk encryption:
 
 | OS | Technology | Enable |
 |---|---|---|
@@ -294,13 +275,11 @@ If SQLCipher is not available, use OS-level full-disk encryption:
 | Linux | LUKS/dm-crypt | `cryptsetup luksFormat /dev/sdX` |
 | Raspberry Pi | LUKS + initramfs | See [Raspberry Pi LUKS guide](https://www.raspberrypi.com/documentation/computers/configuration.html) |
 
-#### Option C: No Encryption (Development Only)
-
-When no provider is set, Lumen logs a warning on startup:
+SQLCipher integration is planned for v0.2.0. On startup, Lumen logs a reminder:
 
 ```
 encryption_at_rest_disabled
-recommendation='Set LUMEN_ENCRYPTION_PROVIDER=sqlcipher and LUMEN_ENCRYPTION_KEY for production'
+recommendation='Use OS-level disk encryption (FileVault, BitLocker, LUKS) for production'
 ```
 
 ### 5.3 File Permissions
@@ -332,8 +311,6 @@ Environment="LUMEN_DEVICE=generic"
 Environment="LUMEN_LOG_LEVEL=info"
 Environment="LUMEN_SOVEREIGN=true"
 Environment="LUMEN_API_KEY=your-api-key-here"
-Environment="LUMEN_ENCRYPTION_PROVIDER=sqlcipher"
-Environment="LUMEN_ENCRYPTION_KEY=your-encryption-key-here"
 Environment="PATH=/home/lumen/.venvs/lumen/bin"
 ExecStart=/home/lumen/.venvs/lumen/bin/uvicorn lumen.api.server:app --host 0.0.0.0 --port 8848
 Restart=always

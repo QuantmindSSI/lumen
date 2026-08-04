@@ -17,10 +17,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-defaults:
-  run:
-    working-directory: ./lumen
-
 jobs:
   secrets-scan:
     name: Secrets Scan
@@ -58,7 +54,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: lumen/pyproject.toml
+          cache-dependency-path: pyproject.toml
 
       - name: Install package
         run: |
@@ -76,7 +72,7 @@ jobs:
         if: always()
         with:
           name: pip-audit-results
-          path: lumen/pip-audit.json
+          path: pip-audit.json
           retention-days: 30
 
   sast:
@@ -91,7 +87,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: lumen/pyproject.toml
+          cache-dependency-path: pyproject.toml
 
       - name: Install bandit
         run: python -m pip install bandit[toml]
@@ -122,7 +118,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: lumen/pyproject.toml
+          cache-dependency-path: pyproject.toml
 
       - name: Install package
         run: |
