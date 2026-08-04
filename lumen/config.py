@@ -70,6 +70,8 @@ class LumenConfig(BaseSettings):
     tfc_step_attention_repair: float = 0.2
     tfc_default_tau: float = 7.0
     tfc_default_resolution: int = 3
+    encryption_key: str | None = None
+    p2p_encryption_key: str | None = None
 
     _resolved: bool = PrivateAttr(default=False)
 

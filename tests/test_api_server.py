@@ -5,9 +5,9 @@ from fastapi.testclient import TestClient
 
 from lumen.api.server import app
 from lumen.config import LumenConfig
+from lumen.conversation import ConversationMemory
 from lumen.data.schema import get_connection, init_db
 from lumen.force.contextual.embed import MockEmbedder
-from lumen.conversation import ConversationMemory
 
 
 @pytest.fixture
@@ -49,6 +49,109 @@ def client(tmp_path, monkeypatch):
         yield c
 
     conn.close()
+
+
+class TestSecurityHeaders:
+    def test_security_headers_present(self, client):
+        resp = client.get("/health")
+        assert resp.status_code == 200
+        assert resp.headers.get("x-content-type-options") == "nosniff"
+        assert resp.headers.get("x-frame-options") == "DENY"
+        assert "strict-transport-security" in resp.headers
+        assert "content-security-policy" in resp.headers
+        assert "referrer-policy" in resp.headers
+
+
+class TestAuthMiddleware:
+    def test_protected_endpoint_without_key(self, client, monkeypatch):
+        # Default fixture has no API key set, so endpoints are open
+        resp = client.post("/search", json={"query": "test", "top_k": 3})
+        assert resp.status_code == 200
+
+    def test_protected_endpoint_rejects_invalid_key(self, client, monkeypatch):
+        # Temporarily set an API key on the global config used by the middleware
+        from lumen.api import server as server_mod
+
+        original_key = server_mod._config.api_key
+        server_mod._config.api_key = "supersecrettestkey"
+        try:
+            resp = client.post("/search", json={"query": "test", "top_k": 3})
+            assert resp.status_code == 401
+            assert "API key" in resp.json()["detail"]
+
+            resp = client.post(
+                "/search",
+                json={"query": "test", "top_k": 3},
+                headers={"X-API-Key": "wrong-key"},
+            )
+            assert resp.status_code == 401
+        finally:
+            server_mod._config.api_key = original_key
+
+    def test_protected_endpoint_accepts_valid_key(self, client, monkeypatch):
+        from lumen.api import server as server_mod
+
+        original_key = server_mod._config.api_key
+        server_mod._config.api_key = "supersecrettestkey"
+        try:
+            resp = client.post(
+                "/search",
+                json={"query": "test", "top_k": 3},
+                headers={"X-API-Key": "supersecrettestkey"},
+            )
+            assert resp.status_code == 200
+        finally:
+            server_mod._config.api_key = original_key
+
+
+class TestRateLimiting:
+    def test_rate_limit_middleware_present(self, client):
+        from lumen.api import server as server_mod
+
+        assert hasattr(server_mod.app.state, "limiter")
+        assert server_mod.app.state.limiter is not None
+        # Verify the decorator is wired by checking route handlers
+        route = next((r for r in server_mod.app.routes if r.path == "/search"), None)
+        assert route is not None
+        # Slowapi uses a wrapper, so endpoint is the limiter wrapper
+        assert route.endpoint.__name__ == "search"
+
+    def test_default_rate_limit_configured(self, client):
+        from lumen.api import server as server_mod
+
+        assert "minute" in server_mod._config.api_rate_limit
+
+
+class TestRequestSizeLimit:
+    def test_request_too_large_rejected(self, client, monkeypatch):
+        from lumen.api import server as server_mod
+
+        original_size = server_mod._config.request_max_size_bytes
+        server_mod._config.request_max_size_bytes = 100
+        # Re-initialise size limit middleware with new config (FastAPI applies middleware on add)
+        # Since we can't easily swap middleware at runtime, we test via direct assertion
+        # that the middleware class checks the header correctly.
+        from lumen.api.server import _SizeLimitMiddleware
+
+        scope = {
+            "type": "http",
+            "headers": [(b"content-length", b"200")],
+        }
+        calls = []
+
+        async def mock_app(scope, receive, send):
+            calls.append("app")
+
+        middleware = _SizeLimitMiddleware(mock_app, max_bytes=100)
+
+        async def mock_send(msg):
+            calls.append(msg)
+
+        import asyncio
+
+        asyncio.run(middleware(scope, None, mock_send))
+        assert any(m.get("status") == 413 for m in calls if isinstance(m, dict))
+        server_mod._config.request_max_size_bytes = original_size
 
 
 class TestHealth:

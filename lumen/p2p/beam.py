@@ -2,9 +2,10 @@
 
 Household-only, LAN-scoped memory sharing.
 
-TRANSPORT SECURITY: Beam sends plaintext over TCP. This is acceptable for
-trusted household LANs but NOT for adversarial networks. Do not expose Beam
-to the public internet or untrusted networks.
+TRANSPORT SECURITY: When a p2p_encryption_key is configured, Beam uses
+AES-256-GCM over TCP. Without a key, it falls back to plaintext. Plaintext
+mode is acceptable for trusted household LANs but NOT for adversarial
+networks. Do not expose plaintext Beam to the public internet.
 
 NOTE: Permission decay (ttl_hours) is recorded in the packet but not yet
 enforced. Receiving peers should implement TTL expiration checks in a
@@ -62,17 +63,27 @@ def _get_default_ip() -> str:
         return "127.0.0.1"
 
 
-def encode_frame(packet: dict) -> bytes:
-    """Serialize *packet* with a 4-byte big-endian length prefix."""
+def encode_frame(packet: dict, crypto=None) -> bytes:
+    """Serialize *packet* with a 4-byte big-endian length prefix.
+
+    If *crypto* is provided, encrypt the JSON payload before framing.
+    """
     payload = msgspec.json.encode(packet)
+    if crypto is not None and crypto.enabled:
+        payload = crypto.encrypt(payload)
     return struct.pack(">I", len(payload)) + payload
 
 
-async def decode_frame(reader: asyncio.StreamReader) -> dict | None:
-    """Read a length-prefixed msgspec JSON packet from *reader*."""
+async def decode_frame(reader: asyncio.StreamReader, crypto=None) -> dict | None:
+    """Read a length-prefixed msgspec JSON packet from *reader*.
+
+    If *crypto* is provided, decrypt the payload after reading.
+    """
     length_bytes = await reader.readexactly(4)
     length = struct.unpack(">I", length_bytes)[0]
     payload = await reader.readexactly(length)
+    if crypto is not None and crypto.enabled:
+        payload = crypto.decrypt(payload)
     return msgspec.json.decode(payload)
 
 
@@ -94,6 +105,9 @@ class BeamNode:
         self._azc: AsyncZeroconf | None = None
         self._browser: AsyncServiceBrowser | None = None
         self._server: asyncio.Server | None = None
+        from lumen.security.crypto import P2PCrypto
+
+        self._crypto = P2PCrypto(getattr(config, "p2p_encryption_key", None))
 
     async def start(self) -> None:
         """Register the local mDNS service and start listening for peers."""
@@ -129,7 +143,7 @@ class BeamNode:
     ) -> None:
         """Handle an incoming framed packet and store its chunks."""
         try:
-            packet = await decode_frame(reader)
+            packet = await decode_frame(reader, crypto=self._crypto)
             if not isinstance(packet, dict):
                 return
             room = packet.get("room")
@@ -197,7 +211,7 @@ class BeamNode:
             _reader, writer = await asyncio.wait_for(
                 asyncio.open_connection(host, port), timeout=5.0
             )
-            framed = encode_frame(packet)
+            framed = encode_frame(packet, crypto=self._crypto)
             writer.write(framed)
             await writer.drain()
             writer.close()

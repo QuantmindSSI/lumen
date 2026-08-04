@@ -79,6 +79,17 @@ def store_memory(
                 logger.warning("store_blocked_by_pii_policy", room=room_name, hits=scan_hits)
                 raise RuntimeError(f"Store blocked by PII policy: {scan_hits}")
 
+    # Optional field-level encryption
+    from lumen.data.schema import get_encryption
+
+    _enc = get_encryption(config)
+    _encrypted = 0
+    _plain_content = content
+    if _enc.enabled:
+        content = _enc.encrypt(content).decode("ascii")
+        _encrypted = 1
+        logger.info("content_encrypted", room=room_name, chunk_len=len(_plain_content))
+
     has_tenant = _tenant_id_supported(conn)
 
     with conn:
@@ -102,8 +113,8 @@ def store_memory(
             else:
                 room_id = row[0]
 
-        # 2. Deduplication
-        content_hash = hashlib.sha256(content.encode()).hexdigest()
+        # 2. Deduplication (hash plaintext so encryption doesn't break dedup)
+        content_hash = hashlib.sha256(_plain_content.encode()).hexdigest()
         if has_tenant:
             existing = conn.execute(
                 "SELECT chunk_id FROM chunk WHERE content_hash = ? AND valid_to IS NULL AND tenant_id = ?",
@@ -128,16 +139,16 @@ def store_memory(
         if has_tenant:
             cur = conn.execute(
                 """INSERT INTO chunk
-                   (locus_id, room_id, content, content_hash, vm_score, vm_factors, resolution, tenant_id)
-                   VALUES (?,?,?,?,?,?,?,?)""",
-                (locus_id, room_id, content, content_hash, vm_score, json.dumps(vm_factors), "FP32", tenant_id),
+                   (locus_id, room_id, content, content_hash, vm_score, vm_factors, resolution, encrypted, tenant_id)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                (locus_id, room_id, content, content_hash, vm_score, json.dumps(vm_factors), "FP32", _encrypted, tenant_id),
             )
         else:
             cur = conn.execute(
                 """INSERT INTO chunk
-                   (locus_id, room_id, content, content_hash, vm_score, vm_factors, resolution)
-                   VALUES (?,?,?,?,?,?,?)""",
-                (locus_id, room_id, content, content_hash, vm_score, json.dumps(vm_factors), "FP32"),
+                   (locus_id, room_id, content, content_hash, vm_score, vm_factors, resolution, encrypted)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (locus_id, room_id, content, content_hash, vm_score, json.dumps(vm_factors), "FP32", _encrypted),
             )
         chunk_id = cur.lastrowid
 
@@ -149,8 +160,8 @@ def store_memory(
         if embedding is not None:
             _get_vector_channel(conn, config).add(chunk_id, embedding)
 
-        # 8. Lexical index
-        _get_lexical_channel(conn).index_chunk(chunk_id, content)
+        # 8. Lexical index (always index plaintext so search works)
+        _get_lexical_channel(conn).index_chunk(chunk_id, _plain_content)
 
         # 9. Interference check
         _trigger_interference_check(conn, room_id, locus_id, chunk_id, embedding)

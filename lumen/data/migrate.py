@@ -14,7 +14,7 @@ from lumen.logging import get_console_logger
 logger = get_console_logger(__name__)
 
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
 
 
 def migrate(conn: sqlite3.Connection, target_version: int = CURRENT_SCHEMA_VERSION) -> None:

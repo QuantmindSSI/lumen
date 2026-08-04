@@ -16,6 +16,7 @@ Endpoints:
 from __future__ import annotations
 
 import json
+import secrets as _secrets
 import sqlite3
 import time
 import uuid
@@ -73,8 +74,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-import secrets as _secrets
-
 # Module-level state (single instance for pilot)
 _state: dict = {}
 
@@ -106,6 +105,35 @@ async def _auth_middleware(request: Request, call_next):
 
 
 app.middleware("http")(_auth_middleware)
+
+
+class _SecurityHeadersMiddleware:
+    """Add security headers to all responses."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def _send_with_headers(message):
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                headers.append((b"strict-transport-security", b"max-age=31536000; includeSubDomains"))
+                headers.append((b"x-content-type-options", b"nosniff"))
+                headers.append((b"x-frame-options", b"DENY"))
+                headers.append((b"content-security-policy", b"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"))
+                headers.append((b"referrer-policy", b"strict-origin-when-cross-origin"))
+                headers.append((b"permissions-policy", b"geolocation=(), microphone=(), camera=()"))
+                message["headers"] = headers
+            await send(message)
+
+        await self.app(scope, receive, _send_with_headers)
+
+
+app.add_middleware(_SecurityHeadersMiddleware)
 
 
 class _SizeLimitMiddleware:

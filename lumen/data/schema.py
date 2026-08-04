@@ -69,6 +69,15 @@ def get_connection(config) -> sqlite3.Connection:
     return conn
 
 
+def get_encryption(config):
+    """Return a FernetEncryption instance if an encryption key is configured."""
+    from lumen.security.crypto import FernetEncryption
+
+    if getattr(config, "encryption_key", None):
+        return FernetEncryption(config.encryption_key)
+    return FernetEncryption(None)
+
+
 def ensure_schema(conn: sqlite3.Connection) -> None:
     """Check PRAGMA user_version and initialise schema if database is empty."""
     user_version = conn.execute("PRAGMA user_version").fetchone()[0]

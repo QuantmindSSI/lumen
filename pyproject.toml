@@ -55,6 +55,7 @@ dependencies = [
     "slowapi>=0.1.9",
     # Model download
     "huggingface-hub>=0.20",
+    "cryptography>=42.0",
 ]
 
 [project.optional-dependencies]

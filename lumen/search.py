@@ -112,6 +112,7 @@ class SearchPipeline:
             query_embedding=query_vec,
             graph_hits=graph_hits or None,
             enable_frqad=self.config.enable_frqad,
+            config=self.config,
         )
 
         has_tenant = _tenant_id_supported(self.conn)

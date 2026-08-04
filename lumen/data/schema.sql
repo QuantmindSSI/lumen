@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS chunk (
     access_count    INTEGER DEFAULT 0,
     last_access_at  INTEGER,
     optical_level   INTEGER DEFAULT 0,         -- 0=full, 1=degraded, 2=forgotten
+    encrypted       INTEGER DEFAULT 0,         -- 1=content is Fernet-encrypted
     provenance_root INTEGER REFERENCES provenance(provenance_id)
 );
 

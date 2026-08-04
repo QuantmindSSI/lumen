@@ -41,6 +41,7 @@ def fuse_and_rerank(
     query_embedding: np.ndarray | None = None,
     graph_hits: list[GraphHit] | None = None,
     enable_frqad: bool | None = None,
+    config=None,
 ) -> list[RetrievedChunk]:
     """
     Stage 3: Reciprocal Rank Fusion + V(m) + FRQAD rerank + recency boost.
@@ -67,7 +68,7 @@ def fuse_and_rerank(
         f"SELECT c.chunk_id, r.name AS room_name, l.name AS locus_name,"
         f" c.content, c.vm_score, c.provenance_root,"
         f" (strftime('%s','now') - c.created_at) / 3600.0 AS age_hours,"
-        f" c.resolution"
+        f" c.resolution, c.encrypted"
         f" FROM chunk c"
         f" LEFT JOIN room r ON r.room_id = c.room_id"
         f" LEFT JOIN locus l ON l.locus_id = c.locus_id"
@@ -103,8 +104,19 @@ def fuse_and_rerank(
             except Exception as exc:
                 logger.debug("vec_chunks_embedding_fetch_failed", error=str(exc))
 
+    # Lazy-load encryption helper once
+    _enc = None
+
     for row in rows:
-        cid, room_name, locus_name, content, vm, prov, age_hours, res = row
+        cid, room_name, locus_name, content, vm, prov, age_hours, res, encrypted = row
+        if encrypted:
+            if _enc is None:
+                from lumen.config import LumenConfig
+                from lumen.data.schema import get_encryption
+
+                _enc = get_encryption(config if config is not None else LumenConfig())
+            if _enc.enabled:
+                content = _enc.decrypt(content)
         # Goal bonus
         goal_bonus = 1.0 + (
             0.2 if any(kw.lower() in (content or "").lower() for kw in goal_tree_keywords) else 0.0
