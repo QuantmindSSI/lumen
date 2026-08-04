@@ -112,7 +112,7 @@ def _get_embedder(model_name):
 
 def _generate_synthetic_corpus(seed: int):
     """Generate a deterministic synthetic corpus with keyword-overlap relevance."""
-    np.random.default_rng(seed)
+    rng = np.random.default_rng(seed)
 
     topics = [
         "machine learning", "deep learning", "neural networks",
