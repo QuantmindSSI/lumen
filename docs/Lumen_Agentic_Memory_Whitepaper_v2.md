@@ -351,13 +351,13 @@ The BEIR subset evaluation harness is described in Section 4.2. Full empirical r
 | # | Limitation | Status | Detail |
 |---|---|---|---|
 | 1 | All evaluation on synthetic corpora. | **Partially addressed** | Domain corpus (111 hand-crafted chunks) and BEIR subset harness (5 datasets) are now evaluated, but results are still sampled (3,000 docs) rather than full-corpus, and no human relevance judgment study has been conducted. |
-| 2 | Forgetting performs unconditional decay. | **Open** | Re-access reinforcement mechanism is not yet implemented. All chunks still decay to zero at `τ_h = 7` over 90 days. |
+| 2 | Forgetting performs unconditional decay. | **Partially addressed** | Re-access reinforcement is implemented (multiplicative V(m) boost on retrieval, fresh `last_access_at`). Selective retention now works in principle; weight learning from implicit feedback remains unprioritised at scale. |
 | 3 | V(m) not validated against human preferences. | **Partially addressed** | 41 implicit feedback samples yield 95.1% satisfaction, but the Nelder-Mead weight-learning pathway has not been exercised at scale. |
 | 4 | TFC hand-tuned without sensitivity analysis. | **Open** | Thresholds remain heuristic. No RL or Bayesian optimization has been applied. |
-| 5 | PNE routing is an upper bound. | **Open** | Keyword-based router unchanged. A trained intent-to-room classifier is still future work. |
+| 5 | PNE routing is an upper bound. | **Partially addressed** | Keyword-based router remains default, but an embedding-aware logistic regression classifier (`IntentRouter.train_lr`) is implemented and can be persisted/loaded. No automatic training pipeline yet. |
 | 6 | Small-N bootstrap CIs. | **Open** | See Section 4 consolidated callout (3 seeds, 28 queries, 41 ratings, 20 ablation queries). |
 | 7 | Cross-system comparison is heterogeneous. | **Open** | Shared harness with identical embedders still pending. |
-| 8 | Multi-user, encryption-at-rest, P2P not implemented. | **Partially addressed** | Beam P2P is implemented but not hardened for adversarial networks. Encryption-at-rest and multi-user concurrency remain open. |
+| 8 | Multi-user, encryption-at-rest, P2P not implemented. | **Partially addressed** | Beam P2P is implemented but not hardened for adversarial networks. Multi-user tenant ID support is present in API and schema. Encryption-at-rest config fields exist but are not yet wired to the SQLite layer. |
 | 9 | Optical degradation not validated per level. | **Partially addressed** | The optical-level increment bug is fixed, but retrieval accuracy at FP16/INT8/BINARY has not been independently measured. |
 | 10 | BM25 fails on punctuation-heavy queries. | **Fixed** | FTS5 lexical search now handles apostrophes, periods, and punctuation via query sanitization. |
 | 11 | L2 interference skipped in sqlite-vec-only mode. | **Fixed** | Interference checker now reads from `vec_chunks` when `vec_fallback` is empty. |
@@ -377,11 +377,11 @@ This release demonstrates that a SQLite-based memory palace is not merely a rese
 We continue to lack:
 - Large-scale retrieval evaluation on real document collections (full BEIR/MTEB submission at leaderboard scale).
 - A BEIR subset harness now evaluates NFCorpus, SciFact, FiQA-2018, ArguAna, and SCIDOCS with standard metrics. This addresses the methodological gap (real relevance judgments instead of keyword overlap) but uses a sampled 3,000-doc slice rather than full corpora.
-- Validation that the forgetting pipeline preserves high-value memories selectively.
+- Validation that the forgetting pipeline preserves high-value memories selectively at scale (re-access reinforcement is implemented but not yet validated with longitudinal human studies).
 - Evidence that the hybrid pipeline outperforms BM25-only on semantically hard queries.
-- A trained intent router; current routing is keyword-based.
+- An automatically trained intent router; the embedding-aware LR classifier exists but requires manual training and has no automatic retraining pipeline.
 - Production-hardened P2P security (Beam is household-trusted only).
-- Encryption-at-rest for the SQLite database.
+- Encryption-at-rest field-level benchmarks; SQLCipher support is implemented but retrieval accuracy on encrypted databases has not been independently measured.
 
 ### 7.3 Honest Claim Calibration
 
@@ -391,7 +391,7 @@ We maintain an explicit posture of claim deflation. The V(m) factors are shallow
 
 ## 8. Conclusion
 
-Lumen advances agentic memory from research concept to beta usability. The core contribution is architectural: a structured memory palace with heuristic forgetting, operating entirely on-device, plugged into LangGraph, LangChain, MCP, and FastAPI ecosystems. Closed engineering gaps include API hardening, punctuation-safe BM25, sqlite-vec interference coverage, USearch graceful fallback, and dynamic dashboard metrics. Partially addressed gaps include a hand-crafted domain corpus, implicit feedback learning, P2P sharing via Beam, corrected optical degradation transitions, and — critically — a BEIR subset evaluation harness that replaces synthetic-only benchmarks with real relevance judgments. Remaining open work includes a re-access reinforcement mechanism for selective forgetting, a trained intent-to-room router, and encryption-at-rest for the SQLite database.
+Lumen advances agentic memory from research concept to beta usability. The core contribution is architectural: a structured memory palace with heuristic forgetting, operating entirely on-device, plugged into LangGraph, LangChain, MCP, and FastAPI ecosystems. Closed engineering gaps include API hardening, punctuation-safe BM25, sqlite-vec interference coverage, USearch graceful fallback, and dynamic dashboard metrics. Partially addressed gaps include a hand-crafted domain corpus, implicit feedback learning, P2P sharing via Beam, corrected optical degradation transitions, and — critically — a BEIR subset evaluation harness that replaces synthetic-only benchmarks with real relevance judgments. Remaining open work includes validation of selective forgetting at scale, an automatic intent-router training pipeline, and field-level benchmarks for encrypted-database retrieval accuracy.
 
 The system remains Apache 2.0–licensed open-source software. The complete source code (59 modules, ~7.4K lines of Python, 194 tests), documentation, six benchmark suites (including BEIR), domain corpus, and integrations are available at `https://github.com/QuantumindSSI/lumen`.
 

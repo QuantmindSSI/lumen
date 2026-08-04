@@ -1,0 +1,107 @@
+{
+  "n_passages": 1000,
+  "n_queries": 100,
+  "embed_dims": 384,
+  "results": [
+    {
+      "level": "FP32",
+      "dense": {
+        "recall@1": 0.2,
+        "recall@3": 0.6,
+        "recall@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@1": 1.0,
+        "ndcg@3": 1.0,
+        "ndcg@5": 1.0,
+        "ndcg@10": 1.0,
+        "latency_ms_mean": 1.12
+      },
+      "hybrid": {
+        "recall@1": 0.2,
+        "recall@3": 0.55,
+        "recall@5": 0.816,
+        "recall@10": 0.998,
+        "ndcg@1": 1.0,
+        "ndcg@3": 0.9377,
+        "ndcg@5": 0.863,
+        "ndcg@10": 0.9662,
+        "latency_ms_mean": 6.08
+      }
+    },
+    {
+      "level": "FP16",
+      "dense": {
+        "recall@1": 0.2,
+        "recall@3": 0.6,
+        "recall@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@1": 1.0,
+        "ndcg@3": 1.0,
+        "ndcg@5": 1.0,
+        "ndcg@10": 1.0,
+        "latency_ms_mean": 1.03
+      },
+      "hybrid": {
+        "recall@1": 0.2,
+        "recall@3": 0.55,
+        "recall@5": 0.816,
+        "recall@10": 0.998,
+        "ndcg@1": 1.0,
+        "ndcg@3": 0.9377,
+        "ndcg@5": 0.863,
+        "ndcg@10": 0.9662,
+        "latency_ms_mean": 7.15
+      }
+    },
+    {
+      "level": "INT8",
+      "dense": {
+        "recall@1": 0.186,
+        "recall@3": 0.388,
+        "recall@5": 0.52,
+        "recall@10": 0.618,
+        "ndcg@1": 0.93,
+        "ndcg@3": 0.7091,
+        "ndcg@5": 0.605,
+        "ndcg@10": 0.6583,
+        "latency_ms_mean": 1.5
+      },
+      "hybrid": {
+        "recall@1": 0.2,
+        "recall@3": 0.508,
+        "recall@5": 0.726,
+        "recall@10": 0.902,
+        "ndcg@1": 1.0,
+        "ndcg@3": 0.881,
+        "ndcg@5": 0.7884,
+        "ndcg@10": 0.8868,
+        "latency_ms_mean": 6.98
+      }
+    },
+    {
+      "level": "BINARY",
+      "dense": {
+        "recall@1": 0.2,
+        "recall@3": 0.292,
+        "recall@5": 0.356,
+        "recall@10": 0.422,
+        "ndcg@1": 1.0,
+        "ndcg@3": 0.5963,
+        "ndcg@5": 0.4754,
+        "ndcg@10": 0.5111,
+        "latency_ms_mean": 1.21
+      },
+      "hybrid": {
+        "recall@1": 0.196,
+        "recall@3": 0.344,
+        "recall@5": 0.448,
+        "recall@10": 0.596,
+        "ndcg@1": 0.98,
+        "ndcg@3": 0.6636,
+        "ndcg@5": 0.5517,
+        "ndcg@10": 0.6323,
+        "latency_ms_mean": 6.17
+      }
+    }
+  ]
+}

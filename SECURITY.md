@@ -54,8 +54,8 @@ Lumen takes security seriously. If you discover a vulnerability, please report i
 
 ## Known Limitations (Alpha)
 
-1. **No encryption at rest** — planned for v0.2.0 (SQLCipher or OS-level)
-2. **No authentication on API** — bind to localhost or use reverse proxy with auth
+1. **No encryption at rest** — config fields (`encryption_key`, `encryption_provider`) exist but are not yet wired to the SQLite layer. Planned for v0.2.0. Use OS-level disk encryption (FileVault, BitLocker, LUKS) as a stopgap.
+2. **API authentication is opt-in** — `X-API-Key` header validation is implemented but disabled when `LUMEN_API_KEY` is unset. Set it before exposing the server to any network.
 3. **P2P sharing not audited** — Beam protocol is experimental; do not use across untrusted networks
 
 ## Dependency Security

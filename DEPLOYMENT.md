@@ -237,7 +237,75 @@ tail -f ~/.lumen/logs/audit.jsonl | jq .
 
 ## 5. Security Hardening
 
-### 5.1 File Permissions
+### 5.1 API Authentication
+
+Lumen supports optional API key authentication via the `X-API-Key` header.
+
+```bash
+# 1. Generate a strong key
+export LUMEN_API_KEY=$(openssl rand -hex 32)
+
+# 2. Add it to your config
+export LUMEN_API_KEY="$LUMEN_API_KEY"
+```
+
+**Authenticated request:**
+```bash
+curl -H "X-API-Key: $LUMEN_API_KEY" http://localhost:8848/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "sovereign AI memory", "top_k": 5}'
+```
+
+**Multi-tenant headers:**
+```bash
+curl -H "X-API-Key: $LUMEN_API_KEY" \
+  -H "X-Tenant-ID: customer-acme" \
+  http://localhost:8848/status
+```
+
+> **Warning:** When `LUMEN_API_KEY` is unset, the API is open. Always set it before exposing Lumen to any network.
+
+### 5.2 Encryption at Rest
+
+#### Option A: SQLCipher (Recommended)
+
+```bash
+# 1. Install SQLCipher bindings
+pip install pysqlcipher3
+
+# 2. Set encryption provider and key
+export LUMEN_ENCRYPTION_PROVIDER="sqlcipher"
+export LUMEN_ENCRYPTION_KEY="$(openssl rand -hex 32)"
+
+# 3. Start Lumen (database will be encrypted on first access)
+lumen serve
+```
+
+> **Important:** Back up your encryption key separately. Losing it means losing all data.
+
+#### Option B: OS-Level Disk Encryption (Production Default)
+
+If SQLCipher is not available, use OS-level full-disk encryption:
+
+| OS | Technology | Enable |
+|---|---|---|
+| macOS | FileVault | System Preferences → Security → FileVault |
+| Windows | BitLocker | Settings → Device encryption |
+| Linux | LUKS/dm-crypt | `cryptsetup luksFormat /dev/sdX` |
+| Raspberry Pi | LUKS + initramfs | See [Raspberry Pi LUKS guide](https://www.raspberrypi.com/documentation/computers/configuration.html) |
+
+#### Option C: No Encryption (Development Only)
+
+When no provider is set, Lumen logs a warning on startup:
+
+```
+encryption_at_rest_disabled
+recommendation='Set LUMEN_ENCRYPTION_PROVIDER=sqlcipher and LUMEN_ENCRYPTION_KEY for production'
+```
+
+### 5.3 File Permissions
+
+File permissions are enforced automatically on startup. Ensure the Lumen process has permission to chmod:
 
 ```bash
 # Secure the Lumen home directory
@@ -246,7 +314,7 @@ chmod 600 ~/.lumen/config.toml
 chmod 600 ~/.lumen/store/lumen.db
 ```
 
-### 5.2 Systemd Service (Linux)
+### 5.4 Systemd Service (Linux)
 
 Create `/etc/systemd/system/lumen.service`:
 
@@ -263,6 +331,9 @@ WorkingDirectory=/home/lumen
 Environment="LUMEN_DEVICE=generic"
 Environment="LUMEN_LOG_LEVEL=info"
 Environment="LUMEN_SOVEREIGN=true"
+Environment="LUMEN_API_KEY=your-api-key-here"
+Environment="LUMEN_ENCRYPTION_PROVIDER=sqlcipher"
+Environment="LUMEN_ENCRYPTION_KEY=your-encryption-key-here"
 Environment="PATH=/home/lumen/.venvs/lumen/bin"
 ExecStart=/home/lumen/.venvs/lumen/bin/uvicorn lumen.api.server:app --host 0.0.0.0 --port 8848
 Restart=always
@@ -286,7 +357,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now lumen
 ```
 
-### 5.3 Reverse Proxy (Nginx)
+### 5.5 Reverse Proxy (Nginx)
 
 ```nginx
 server {

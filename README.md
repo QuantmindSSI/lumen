@@ -1,6 +1,5 @@
 <div align="center">
 
-<!-- Vesica Mark ASCII -->
 <pre>
         ┌───┐
      ┌──┤   ├──┐
@@ -11,7 +10,7 @@
 
 <h1>Lumen</h1>
 
-<p><strong>Twin-force memory and context framework for sovereign AI agents.</strong></p>
+<p><strong>Local-first memory and context framework for sovereign AI agents.</strong></p>
 
 <p>
   <a href="https://github.com/QuantumindSSI/lumen/actions"><img src="https://img.shields.io/github/actions/workflow/status/QuantumindSSI/lumen/ci.yml?branch=main&style=flat-square" alt="CI"></a>
@@ -20,7 +19,7 @@
   <img src="https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square" alt="Python">
 </p>
 
-<p><em>Your agent deserves a mind of its own.</em></p>
+<p><em>Local memory for local agents. Beta — under active development.</em></p>
 
 </div>
 
@@ -28,23 +27,22 @@
 
 ## What is Lumen?
 
-Lumen gives local AI agents a **memory palace** — a structured, personal, bounded mind that lives entirely on your hardware.
+Lumen is a **local-first memory store for LLM agents** that runs entirely on your hardware. It provides structured storage, hybrid retrieval (lexical + vector + graph), managed decay, and native integrations for LangChain, LangGraph, MCP, and FastAPI.
 
-- **No cloud.** No API calls. No data leaves your device.
-- **No daemons.** Single in-process runtime. No Docker on the Pi.
-- **Remembers what matters.** Biologically-grounded forgetting lets old memories dim naturally.
-- **Learns what's important to you.** Per-user value model (V(m)) ranks memories by your goals and values.
-- **Fits on a Raspberry Pi.** ~90 MB RAM. ~35 MB per 10,000 memories.
+- **No cloud.** All embeddings, storage, and retrieval run on-device via ONNX Runtime and SQLite.
+- **No daemons.** Single in-process runtime. Fits on a Raspberry Pi (~90 MB RAM).
+- **Hybrid retrieval.** BM25 (SQLite FTS5), cosine-similarity vector search, and optional graph traversal with reciprocal rank fusion.
+- **Managed memory lifecycle.** Time-based decay, similarity-based interference weakening, and budget-based eviction.
+- **Integrations.** Native LangGraph checkpoint saver, LangChain memory adapter, MCP server, FastAPI REST API.
 
-### The Twin Forces
+### Core Design
 
-Lumen is built on two forces that every mind needs:
-
-| Force | Role | Metaphor |
-|---|---|---|
-| **Memory (Mnemonic)** | Store, retrieve, consolidate, forget | The palace — rooms, loci, corridors |
-| **Context (Contextual)** | Assemble, attend, search, route intent | The window — what the agent sees right now |
-| **Lumen (Unification)** | Balance memory depth against context breadth | The light at their intersection |
+| Component | Role |
+|---|---|
+| **Structured storage** | Rooms, loci, and chunks with bi-temporal tracking |
+| **Hybrid retrieval** | Lexical (BM25), dense (cosine), and graph channels with RRF fusion |
+| **Memory lifecycle** | Heuristic decay, interference weakening, and budget eviction |
+| **Context assembly** | Token-budgeted context windows with Jinja2 templates |
 
 ---
 
@@ -97,7 +95,6 @@ context = lumen.context.assemble(
     query="What UI settings does the user like?"
 )
 print(context.window)
-# → Retrieved memories ranked by relevance, recency, and personal value
 ```
 
 ### Check Status
@@ -105,11 +102,9 @@ print(context.window)
 ```bash
 $ lumen status
 
-⚡ Twin-Force Controller: ACTIVE
-  Memory Palace: 12 rooms, 147 loci, 2,341 chunks
-  Context Window: 3.2K tokens (budget: 4K)
-  Last consolidation: 3m ago
-  Forgetting queue: 18 items pending
+  Structured Store: 3 rooms, 56 chunks
+  Context Budget: 2,048 tokens
+  TFC: e=0.50 a=0.50 τ=7.0d r=3
 ```
 
 ---
@@ -121,17 +116,15 @@ User Input
     │
     ▼
 ┌─────────────────────────────────────────────┐
-│  Intent Router                              │
-│  (factual? exploratory? relational?)       │
+│  Intent Router (keyword-based)              │
 └─────────────────────────────────────────────┘
     │
     ▼
 ┌─────────────────────────────────────────────┐
 │  Parallel Retrieval                         │
 │  ├── BM25  (SQLite FTS5)                    │
-│  ├── Dense (sqlite-vec / USearch)           │
-│  ├── Graph (Kùzu / NetworkX)                │
-│  └── Temporal (time-decay scoring)          │
+│  ├── Dense (sqlite-vec / brute-force)       │
+│  └── Graph (NetworkX BFS)                   │
 └─────────────────────────────────────────────┘
     │
     ▼
@@ -150,10 +143,10 @@ Agent Reasoning (local LLM or external)
     ▼
 ┌─────────────────────────────────────────────┐
 │  Consolidation (async, low priority)        │
-│  ├── Encode to palace                       │
-│  ├── Compute V(m) 7-factor score            │
+│  ├── Encode to structured store             │
+│  ├── Compute V(m) heuristic score           │
 │  ├── Interference check                     │
-│  └── Schedule optical degradation           │
+│  └── Schedule decay                          │
 └─────────────────────────────────────────────┘
 ```
 
@@ -161,99 +154,101 @@ Agent Reasoning (local LLM or external)
 
 ## Platform Support
 
-| Platform | RAM | Vector Index | Local LLM | Status |
+| Platform | RAM | Vector Index | Embedder | Status |
 |---|---|---|---|---|
-| Raspberry Pi 5 | 4 GB | sqlite-vec | Optional | ✅ Tested |
-| Jetson Orin Nano | 8 GB | USearch | Qwen3-1.7B | ✅ Tested |
-| Generic x86_64 | 8 GB+ | USearch | Gemma-4B | ✅ Tested |
-| Orange Pi 5 | 8 GB | USearch | Optional | 🧪 Community |
-| Apple Silicon | 8 GB+ | USearch | Optional | 🧪 Community |
+| Raspberry Pi 5 | 4 GB | sqlite-vec | BGE-small | ✅ Tested |
+| Jetson Orin Nano | 8 GB | USearch | BGE-small | ✅ Tested |
+| Generic x86_64 | 8 GB+ | USearch | BGE-small | ✅ Tested |
+| Orange Pi 5 | 8 GB | USearch | BGE-small | 🧪 Community |
+| Apple Silicon | 8 GB+ | USearch | BGE-small | 🧪 Community |
 
 ---
 
 ## Key Features
 
-### 🏛️ Memory Palace
+### Structured Store
 - **Rooms** — top-level categories (preferences, projects, people)
 - **Loci** — specific locations within rooms
-- **Corridors** — graph relationships between memories
-- **Provenance chains** — bi-temporal tracking of every fact
+- **Chunks** — atomic memory units with content, embeddings, and metadata
+- **Provenance chains** — source tracking for every fact
 
-### 🧠 Biologically-Grounded Forgetting
-- **L1 Decay** — memories fade with time
-- **L2 Interference** — similar memories compete
-- **L3 Budget** — storage limits trigger graceful release
-- **L4 Compliance** — safety-triggered deletion (PII, secrets)
+### Memory Lifecycle
+- **L1 Decay** — time-based exponential decay of memory scores
+- **L2 Interference** — similar memories within a locus penalize each other
+- **L3 Budget** — eviction when process memory exceeds configurable limit
 
-### ⚖️ Twin-Force Controller
-Self-adjusting balance between memory depth and context breadth:
-- `e` = conservation bias (remember more vs. attend more)
+### TFC State Controller
+Heuristic state machine that adjusts retrieval behavior based on interaction signals:
+- `e` = conservation bias (remember vs. attend)
 - `a` = attentional temperature (focused vs. exploratory)
-- `τ` = temporal horizon (how far back to search)
+- `τ` = temporal horizon in days
 - `r` = resolution level (FP32 → INT8 → binary degradation)
 
-### 🔒 Sovereign Mode
+### Sovereign Mode
 ```bash
 export LUMEN_SOVEREIGN=true
 ```
 Blocks all external API calls. Embeddings run locally via ONNX Runtime. Your data never leaves your device.
 
-### 🔌 Integrations
+### Integrations
 - **MCP Server** — OpenCode, Claude Desktop, GitHub Copilot
 - **LangChain** — `LumenChatMemory` adapter
 - **LangGraph** — `LumenCheckpointSaver` for graph state persistence (`pip install lumen[langgraph]`)
-- **FastAPI** — REST API with health checks
+- **FastAPI** — REST API with health checks, rate limiting, and auth
 - **OpenCode** — Native skill in `.opencode/skills/lumen-memory/`
 
-### 📊 Effectiveness Dashboard
-Lumen includes a self-hosted web dashboard at `/dashboard` (no external dependencies):
+### Effectiveness Dashboard
+Lumen includes a self-hosted web dashboard at `/dashboard`:
 
 ```bash
 lumen serve
 # Open http://localhost:8000/dashboard
 ```
 
-The dashboard shows real-time retrieval effectiveness, Twin-Force Controller state, palace topology, cost comparison, and SOTA benchmarks — everything a business needs to validate production readiness.
+The dashboard shows live palace topology, TFC state, and memory health metrics.
+
+---
+
+## Current Limitations
+
+Lumen is **beta software** under active development. Key known limitations:
+
+| Area | Status | Detail |
+|---|---|---|
+| Forgetting | **Partially addressed** | Re-access reinforcement is implemented (boosts V(m) on retrieval). Selective weight learning via feedback still heuristic |
+| V(m) scoring | **Heuristic only** | 7-factor lexical scoring (word overlap, pronoun density, sentiment word lists). Weight learning requires ≥10 feedback samples |
+| TFC controller | **Heuristic only** | Hand-tuned thresholds; no sensitivity analysis, RL, or Bayesian optimization |
+| Retrieval benchmarks | **Internal only** | No full BEIR/MTEB leaderboard submission yet. Current evaluation is on synthetic corpora and BEIR subsets |
+| Intent routing | **Partially addressed** | Keyword rules with optional trained logistic regression classifier (`intent.py`). LR requires manual training |
+| Multi-user / P2P | **Experimental** | Beam P2P is household-local only; not hardened for adversarial networks |
+| Encryption-at-rest | **In progress** | Config fields (`encryption_key`, `encryption_provider`) exist. SQLCipher and Fernet providers are planned for v0.2.0 |
 
 ---
 
 ## Benchmarks
 
-### Cross-System Head-to-Head
-
-| Metric | Lumen (RPi5) | Chroma | FAISS | Qdrant |
-|---|---|---|---|---|
-| Install size | ~180 MB | ~250 MB | ~300 MB | ~400 MB |
-| Runtime RAM | ~90 MB | ~150 MB | ~200 MB | ~250 MB |
-| 10k mem storage | ~35 MB | ~50 MB | ~60 MB | ~80 MB |
-| Avg retrieval | 12 ms | 8 ms | 5 ms | 6 ms |
-| p99 retrieval | 45 ms | 120 ms | 35 ms | 40 ms |
-| Cold start | 0.8 s | 2.1 s | 1.5 s | 3.2 s |
-| Forgets gracefully | ✅ | ❌ | ❌ | ❌ |
-| Runs offline | ✅ | ⚠️ | ✅ | ❌ |
-
-### Proprietary Evaluation Suites
-
-Lumen ships with four first-party benchmarks that evaluate properties no generic vector store measures:
+Lumen ships with first-party benchmark suites:
 
 | Benchmark | What It Measures | Run |
 |---|---|---|
-| **Retrieval** | R@k, nDCG@k, MAP, MRR across BM25/dense/hybrid. MS MARCO + BEIR subsets with bootstrap CIs. | `python -m lumen.benchmarks.retrieval.run` |
-| **Forgetting** | 90-day survival curves, interference precision, VM distribution drift, decay + eviction pipeline. | `python -m lumen.benchmarks.forgetting.run` |
-| **Performance** | Query latency (p50/p95/p99), ingestion throughput, RAM/DB footprint, write-amplification speedup. | `python -m lumen.benchmarks.perf.run` |
-| **Palace Navigation Efficiency** | Latency speedup and recall retention of room/locus-constrained search vs. flat global. Intent routing accuracy and pruning efficiency. | `python -m lumen.benchmarks.navigation.run` |
-| **End-to-End Memory Quality** | Multi-turn conversational memory persistence with 7 agent personas. R@k semantic recall, similarity, latency across sessions. | `python -m lumen.benchmarks.e2e.run` |
+| **Retrieval** | R@k, nDCG@k, MAP, MRR across BM25/dense/hybrid | `python -m lumen.benchmarks.retrieval.run` |
+| **Forgetting** | 90-day survival curves, interference precision | `python -m lumen.benchmarks.forgetting.run` |
+| **Performance** | Query latency, ingestion throughput, footprint | `python -m lumen.benchmarks.perf.run` |
+| **Navigation** | Room-constrained vs. global search efficiency | `python -m lumen.benchmarks.navigation.run` |
+| **E2E Memory Quality** | Multi-turn conversational recall | `python -m lumen.benchmarks.e2e.run` |
 
 Run all at once: `python -m lumen.benchmarks.run_all`
 
-### Domain Corpus & Seeding
+### Approximate Resource Footprint
 
-Lumen ships with a hand-crafted knowledge corpus (`datasets/domain_corpus.json`) covering 8 domains: ML, NLP, cybersecurity, distributed systems, healthcare AI, quantum computing, open source, and climate tech. Seed a production-ready palace:
+Measured on single-core CPU with BGE-small embedder. Competitor numbers are from published documentation (heterogeneous sources — not controlled comparison).
 
-```bash
-python -m datasets.seed                    # uses all-MiniLM-L6-v2 embeddings
-python -m datasets.seed --embedder BAAI/bge-small-en-v1.5  # higher-quality
-```
+| Metric | Lumen | Chroma | FAISS | Qdrant |
+|---|---|---|---|---|
+| Install size | ~180 MB | ~250 MB | ~300 MB | ~400 MB |
+| Runtime RAM | ~90 MB | ~150 MB | ~200 MB | ~250 MB |
+| 10k chunk storage | ~35 MB | ~50 MB | ~60 MB | ~80 MB |
+| Cold start | 0.8 s | 2.1 s | 1.5 s | 3.2 s |
 
 ---
 
@@ -264,6 +259,7 @@ python -m datasets.seed --embedder BAAI/bge-small-en-v1.5  # higher-quality
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Production deployment guide |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to contribute code and docs |
 | [`SECURITY.md`](SECURITY.md) | Security policy and vulnerability reporting |
+| [`docs/Lumen_Agentic_Memory_Whitepaper_v2.md`](docs/Lumen_Agentic_Memory_Whitepaper_v2.md) | Technical white paper with full methodology and known limitations |
 
 ---
 
@@ -271,10 +267,10 @@ python -m datasets.seed --embedder BAAI/bge-small-en-v1.5  # higher-quality
 
 | Milestone | Status | Key Deliverables |
 |---|---|---|
-| **M1** | ✅ Done | Store & Retrieve — schema, BM25+dense fusion, FRQAD, wear batcher |
-| **M2** | ✅ Done | Palace & Forget — onboarding wizard (`illuminate`), V(m) calibration, optical degradation |
-| **M3** | ✅ Core Done | Context & Twin Force — assembly autonomy, sleep consolidation, TFC learning |
-| **M4** | In Progress | Network & Polish — P2P sharing (`beam`), multi-user, encryption at rest, LangGraph adapter ✅ |
+| **M1** | ✅ Done | Store & retrieve — schema, BM25+dense fusion, wear batcher |
+| **M2** | ✅ Done | Palace & lifecycle — onboarding wizard, V(m) calibration, decay pipeline |
+| **M3** | ✅ Core Done | Context & TFC — assembly, sleep consolidation, TFC state machine |
+| **M4** | In Progress | Network & hardening — P2P sharing (Beam) 🔄, multi-user 🔄, encryption at rest 🔄, API auth ✅, LangGraph adapter ✅ |
 
 ---
 
@@ -297,6 +293,6 @@ Apache-2.0. See [`LICENSE`](LICENSE).
 
 <div align="center">
 
-<p><em>Twin forces, unified mind. On your hardware. For your data. Your way.</em></p>
+<p><em>Local-first memory for your agents. On your hardware. Your way.</em></p>
 
 </div>

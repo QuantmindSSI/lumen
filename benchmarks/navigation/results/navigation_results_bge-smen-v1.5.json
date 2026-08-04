@@ -1,0 +1,181 @@
+{
+  "benchmark": "navigation",
+  "embedder": "BAAI/bge-small-en-v1.5",
+  "num_rooms": 8,
+  "total_chunks": 1280,
+  "num_queries": 324,
+  "num_seeds": 3,
+  "summary": {
+    "global": {
+      "latency_ms": {
+        "mean": 33.24,
+        "p50": 30.25,
+        "p95": 49.05,
+        "p99": 71.81
+      },
+      "recall_1": {
+        "mean": 0.0219,
+        "ci95_lo": 0.0177,
+        "ci95_hi": 0.0286
+      },
+      "recall_3": {
+        "mean": 0.058,
+        "ci95_lo": 0.0516,
+        "ci95_hi": 0.0659
+      },
+      "recall_5": {
+        "mean": 0.0923,
+        "ci95_lo": 0.0841,
+        "ci95_hi": 0.1016
+      },
+      "recall_10": {
+        "mean": 0.173,
+        "ci95_lo": 0.1609,
+        "ci95_hi": 0.1858
+      },
+      "recall_20": {
+        "mean": 0.3337,
+        "ci95_lo": 0.3143,
+        "ci95_hi": 0.3545
+      }
+    },
+    "oracle": {
+      "latency_ms": {
+        "mean": 27.0,
+        "p50": 23.97,
+        "p95": 44.5,
+        "p99": 58.4
+      },
+      "recall_1": {
+        "mean": 0.0188,
+        "ci95_lo": 0.0174,
+        "ci95_hi": 0.0205
+      },
+      "recall_3": {
+        "mean": 0.0546,
+        "ci95_lo": 0.0504,
+        "ci95_hi": 0.0597
+      },
+      "recall_5": {
+        "mean": 0.092,
+        "ci95_lo": 0.0839,
+        "ci95_hi": 0.1011
+      },
+      "recall_10": {
+        "mean": 0.1723,
+        "ci95_lo": 0.1602,
+        "ci95_hi": 0.185
+      },
+      "recall_20": {
+        "mean": 0.3323,
+        "ci95_lo": 0.313,
+        "ci95_hi": 0.3531
+      }
+    },
+    "routed": {
+      "latency_ms": {
+        "mean": 26.41,
+        "p50": 23.87,
+        "p95": 47.45,
+        "p99": 63.94
+      },
+      "recall_1": {
+        "mean": 0.0219,
+        "ci95_lo": 0.0177,
+        "ci95_hi": 0.0286
+      },
+      "recall_3": {
+        "mean": 0.0577,
+        "ci95_lo": 0.0514,
+        "ci95_hi": 0.0653
+      },
+      "recall_5": {
+        "mean": 0.0921,
+        "ci95_lo": 0.084,
+        "ci95_hi": 0.1012
+      },
+      "recall_10": {
+        "mean": 0.1724,
+        "ci95_lo": 0.1604,
+        "ci95_hi": 0.1851
+      },
+      "recall_20": {
+        "mean": 0.3324,
+        "ci95_lo": 0.3131,
+        "ci95_hi": 0.3535
+      }
+    },
+    "oracle_vs_global": {
+      "recall_retention_1": {
+        "mean": 0.9938,
+        "ci95_lo": 0.9846,
+        "ci95_hi": 1.0
+      },
+      "recall_retention_3": {
+        "mean": 0.9938,
+        "ci95_lo": 0.9846,
+        "ci95_hi": 1.0031
+      },
+      "recall_retention_5": {
+        "mean": 1.0015,
+        "ci95_lo": 0.9956,
+        "ci95_hi": 1.008
+      },
+      "recall_retention_10": {
+        "mean": 0.9993,
+        "ci95_lo": 0.9926,
+        "ci95_hi": 1.0064
+      },
+      "recall_retention_20": {
+        "mean": 0.9959,
+        "ci95_lo": 0.9921,
+        "ci95_hi": 0.9997
+      },
+      "latency_speedup": {
+        "mean": 1.32,
+        "ci95_lo": 1.26,
+        "ci95_hi": 1.39
+      }
+    },
+    "routed_vs_global": {
+      "recall_retention_1": {
+        "mean": 0.9969,
+        "ci95_lo": 0.9907,
+        "ci95_hi": 1.0
+      },
+      "recall_retention_3": {
+        "mean": 0.9969,
+        "ci95_lo": 0.9897,
+        "ci95_hi": 1.0036
+      },
+      "recall_retention_5": {
+        "mean": 1.004,
+        "ci95_lo": 0.9981,
+        "ci95_hi": 1.0106
+      },
+      "recall_retention_10": {
+        "mean": 0.9998,
+        "ci95_lo": 0.9928,
+        "ci95_hi": 1.007
+      },
+      "recall_retention_20": {
+        "mean": 0.9964,
+        "ci95_lo": 0.9926,
+        "ci95_hi": 1.0
+      },
+      "latency_speedup": {
+        "mean": 1.35,
+        "ci95_lo": 1.3,
+        "ci95_hi": 1.41
+      }
+    },
+    "routing_and_pruning": {
+      "routing_accuracy": 1.0,
+      "mean_pruning_ratio": 0.7994,
+      "median_pruning_ratio": 0.75
+    },
+    "intent_distribution": {
+      "factual": 324
+    }
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "benchmark": "ablation",
+  "corpus": "domain_corpus",
+  "num_queries": 20,
+  "embedder": "all-MiniLM-L6-v2",
+  "baseline": {
+    "room_accuracy": 1.0,
+    "locus_accuracy": 1.0,
+    "keyword_recall": 0.9608,
+    "avg_latency_ms": 28.62,
+    "room_delta": 0.0,
+    "locus_delta": 0.0,
+    "kw_delta": 0.0
+  },
+  "ablations": {
+    "FULL": {
+      "room_accuracy": 1.0,
+      "locus_accuracy": 1.0,
+      "keyword_recall": 0.9608,
+      "avg_latency_ms": 28.62,
+      "room_delta": 0.0,
+      "locus_delta": 0.0,
+      "kw_delta": 0.0
+    },
+    "NO_TFC": {
+      "room_accuracy": 1.0,
+      "locus_accuracy": 1.0,
+      "keyword_recall": 0.9608,
+      "avg_latency_ms": 19.74,
+      "room_delta": 0.0,
+      "locus_delta": 0.0,
+      "kw_delta": 0.0
+    },
+    "NO_VM": {
+      "room_accuracy": 1.0,
+      "locus_accuracy": 1.0,
+      "keyword_recall": 0.9608,
+      "avg_latency_ms": 18.57,
+      "room_delta": 0.0,
+      "locus_delta": 0.0,
+      "kw_delta": 0.0
+    },
+    "NO_GRAPH": {
+      "room_accuracy": 1.0,
+      "locus_accuracy": 1.0,
+      "keyword_recall": 0.9608,
+      "avg_latency_ms": 17.31,
+      "room_delta": 0.0,
+      "locus_delta": 0.0,
+      "kw_delta": 0.0
+    },
+    "BM25_ONLY": {
+      "room_accuracy": 1.0,
+      "locus_accuracy": 1.0,
+      "keyword_recall": 0.9483,
+      "avg_latency_ms": 2.1,
+      "room_delta": 0.0,
+      "locus_delta": 0.0,
+      "kw_delta": -0.0125
+    },
+    "DENSE_ONLY": {
+      "room_accuracy": 1.0,
+      "locus_accuracy": 1.0,
+      "keyword_recall": 0.9608,
+      "avg_latency_ms": 14.95,
+      "room_delta": 0.0,
+      "locus_delta": 0.0,
+      "kw_delta": 0.0
+    }
+  }
+}

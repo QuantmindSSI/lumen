@@ -1,0 +1,1417 @@
+{
+  "benchmark": "e2e_memory_quality",
+  "embedder": "all-MiniLM-L6-v2",
+  "num_sessions": 7,
+  "num_query_turns": 28,
+  "bootstrap_samples": 1000,
+  "aggregate_metrics": {
+    "recall_1": {
+      "mean": 0.9643,
+      "ci95_lo": 0.8929,
+      "ci95_hi": 1.0
+    },
+    "recall_5": {
+      "mean": 1.0,
+      "ci95_lo": 1.0,
+      "ci95_hi": 1.0
+    },
+    "recall_10": {
+      "mean": 1.0,
+      "ci95_lo": 1.0,
+      "ci95_hi": 1.0
+    },
+    "semantic_similarity": {
+      "mean": 1.0,
+      "ci95_lo": 1.0,
+      "ci95_hi": 1.0
+    },
+    "latency_ms": {
+      "mean": 54.7907,
+      "ci95_lo": 34.2231,
+      "ci95_hi": 80.0364
+    }
+  },
+  "session_results": [
+    {
+      "persona": "Security Consultant",
+      "num_queries": 4,
+      "avg_recall_10": 1.0,
+      "avg_semantic_similarity": 1.0,
+      "avg_latency_ms": 30.66
+    },
+    {
+      "persona": "ML Engineer",
+      "num_queries": 4,
+      "avg_recall_10": 1.0,
+      "avg_semantic_similarity": 1.0,
+      "avg_latency_ms": 68.47
+    },
+    {
+      "persona": "Medical Researcher",
+      "num_queries": 4,
+      "avg_recall_10": 1.0,
+      "avg_semantic_similarity": 1.0,
+      "avg_latency_ms": 84.7
+    },
+    {
+      "persona": "QA Assistant",
+      "num_queries": 4,
+      "avg_recall_10": 1.0,
+      "avg_semantic_similarity": 1.0,
+      "avg_latency_ms": 72.44
+    },
+    {
+      "persona": "Architecture Reviewer",
+      "num_queries": 4,
+      "avg_recall_10": 1.0,
+      "avg_semantic_similarity": 1.0,
+      "avg_latency_ms": 22.15
+    },
+    {
+      "persona": "Climate Analyst",
+      "num_queries": 4,
+      "avg_recall_10": 1.0,
+      "avg_semantic_similarity": 1.0,
+      "avg_latency_ms": 45.64
+    },
+    {
+      "persona": "Database Admin",
+      "num_queries": 4,
+      "avg_recall_10": 1.0,
+      "avg_semantic_similarity": 1.0,
+      "avg_latency_ms": 59.47
+    }
+  ],
+  "all_turns": [
+    {
+      "session": "Security Consultant",
+      "room": "security_audit",
+      "turn_id": 1,
+      "action": "store",
+      "facts_stored": 3
+    },
+    {
+      "session": "Security Consultant",
+      "room": "security_audit",
+      "turn_id": 2,
+      "action": "store",
+      "facts_stored": 3
+    },
+    {
+      "session": "Security Consultant",
+      "room": "security_audit",
+      "turn_id": 3,
+      "action": "query",
+      "query": "What cloud provider does AlphaCorp use for primary hosting and what is their main database setup?",
+      "expected_fact_ids": [
+        0
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0,
+        "latency_ms": 14.33
+      },
+      "top_5_chunks": [
+        {
+          "id": 1,
+          "score": 0.0132,
+          "preview": "Client AlphaCorp uses AWS us-east-1 for primary hosting and Azure West Europe for DR. Their critical workloads include a..."
+        },
+        {
+          "id": 4,
+          "score": 0.0087,
+          "preview": "Client BetaFinance is a SOC 2 Type II certified fintech. Their architecture includes a React frontend on Vercel, a Go AP..."
+        },
+        {
+          "id": 2,
+          "score": 0.0079,
+          "preview": "AlphaCorp's last security audit found 12 critical vulnerabilities: 4 in IAM (overly permissive roles), 3 in S3 bucket po..."
+        },
+        {
+          "id": 6,
+          "score": 0.007,
+          "preview": "BetaFinance's 2024 audit found issues with secret rotation (keys not rotated in 18 months), insufficient logging for API..."
+        },
+        {
+          "id": 5,
+          "score": 0.0067,
+          "preview": "BetaFinance processes 380,000 transactions per hour during peak trading. Their P95 API latency is 87ms. They use HashiCo..."
+        }
+      ]
+    },
+    {
+      "session": "Security Consultant",
+      "room": "security_audit",
+      "turn_id": 3,
+      "action": "query",
+      "query": "How many transactions per hour does BetaFinance process at peak?",
+      "expected_fact_ids": [
+        3
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0,
+        "latency_ms": 63.25
+      },
+      "top_5_chunks": [
+        {
+          "id": 5,
+          "score": 0.0163,
+          "preview": "BetaFinance processes 380,000 transactions per hour during peak trading. Their P95 API latency is 87ms. They use HashiCo..."
+        },
+        {
+          "id": 4,
+          "score": 0.0092,
+          "preview": "Client BetaFinance is a SOC 2 Type II certified fintech. Their architecture includes a React frontend on Vercel, a Go AP..."
+        },
+        {
+          "id": 6,
+          "score": 0.0084,
+          "preview": "BetaFinance's 2024 audit found issues with secret rotation (keys not rotated in 18 months), insufficient logging for API..."
+        },
+        {
+          "id": 1,
+          "score": 0.0063,
+          "preview": "Client AlphaCorp uses AWS us-east-1 for primary hosting and Azure West Europe for DR. Their critical workloads include a..."
+        },
+        {
+          "id": 3,
+          "score": 0.0042,
+          "preview": "The AlphaCorp CISO, Maria Santos, mandated that all critical findings be remediated within 30 days. The S3 and IAM findi..."
+        }
+      ]
+    },
+    {
+      "session": "Security Consultant",
+      "room": "security_audit",
+      "turn_id": 4,
+      "action": "query",
+      "query": "What was AlphaCorp CISO's deadline for fixing critical vulnerabilities and how many were IAM-related?",
+      "expected_fact_ids": [
+        1
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0000001192092896,
+        "latency_ms": 32.15
+      },
+      "top_5_chunks": [
+        {
+          "id": 3,
+          "score": 0.0134,
+          "preview": "The AlphaCorp CISO, Maria Santos, mandated that all critical findings be remediated within 30 days. The S3 and IAM findi..."
+        },
+        {
+          "id": 2,
+          "score": 0.013,
+          "preview": "AlphaCorp's last security audit found 12 critical vulnerabilities: 4 in IAM (overly permissive roles), 3 in S3 bucket po..."
+        },
+        {
+          "id": 1,
+          "score": 0.0088,
+          "preview": "Client AlphaCorp uses AWS us-east-1 for primary hosting and Azure West Europe for DR. Their critical workloads include a..."
+        },
+        {
+          "id": 6,
+          "score": 0.008,
+          "preview": "BetaFinance's 2024 audit found issues with secret rotation (keys not rotated in 18 months), insufficient logging for API..."
+        },
+        {
+          "id": 5,
+          "score": 0.0055,
+          "preview": "BetaFinance processes 380,000 transactions per hour during peak trading. Their P95 API latency is 87ms. They use HashiCo..."
+        }
+      ]
+    },
+    {
+      "session": "Security Consultant",
+      "room": "security_audit",
+      "turn_id": 4,
+      "action": "query",
+      "query": "What issues did BetaFinance's 2024 audit find regarding their secrets management?",
+      "expected_fact_ids": [
+        5
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0,
+        "latency_ms": 12.9
+      },
+      "top_5_chunks": [
+        {
+          "id": 6,
+          "score": 0.016,
+          "preview": "BetaFinance's 2024 audit found issues with secret rotation (keys not rotated in 18 months), insufficient logging for API..."
+        },
+        {
+          "id": 4,
+          "score": 0.011,
+          "preview": "Client BetaFinance is a SOC 2 Type II certified fintech. Their architecture includes a React frontend on Vercel, a Go AP..."
+        },
+        {
+          "id": 5,
+          "score": 0.0109,
+          "preview": "BetaFinance processes 380,000 transactions per hour during peak trading. Their P95 API latency is 87ms. They use HashiCo..."
+        },
+        {
+          "id": 2,
+          "score": 0.0102,
+          "preview": "AlphaCorp's last security audit found 12 critical vulnerabilities: 4 in IAM (overly permissive roles), 3 in S3 bucket po..."
+        },
+        {
+          "id": 3,
+          "score": 0.0073,
+          "preview": "The AlphaCorp CISO, Maria Santos, mandated that all critical findings be remediated within 30 days. The S3 and IAM findi..."
+        }
+      ]
+    },
+    {
+      "session": "ML Engineer",
+      "room": "model_training",
+      "turn_id": 1,
+      "action": "store",
+      "facts_stored": 3
+    },
+    {
+      "session": "ML Engineer",
+      "room": "model_training",
+      "turn_id": 2,
+      "action": "store",
+      "facts_stored": 3
+    },
+    {
+      "session": "ML Engineer",
+      "room": "model_training",
+      "turn_id": 3,
+      "action": "query",
+      "query": "What is the validation accuracy of the latest model and how does it compare to the previous version?",
+      "expected_fact_ids": [
+        0
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0,
+        "latency_ms": 30.91
+      },
+      "top_5_chunks": [
+        {
+          "id": 1,
+          "score": 0.0095,
+          "preview": "Model resnet-finetune-v3 is a ResNet-50 fine-tuned on 450,000 images across 15 product categories. Training took 72 GPU-..."
+        },
+        {
+          "id": 5,
+          "score": 0.0081,
+          "preview": "Model monitoring tracks data drift using PSI (Population Stability Index) on input feature distributions. Alert threshol..."
+        },
+        {
+          "id": 4,
+          "score": 0.0065,
+          "preview": "Deployment runs on Triton Inference Server with dynamic batching (max batch 32, timeout 100us). The ONNX export used ops..."
+        },
+        {
+          "id": 2,
+          "score": 0.0062,
+          "preview": "The training data pipeline ingests images from S3, applies augmentation (random crop, horizontal flip, color jitter with..."
+        },
+        {
+          "id": 3,
+          "score": 0.0057,
+          "preview": "Hyperparameter search used Optuna with 200 trials over the space: learning rate [1e-4, 1e-2] log-uniform, weight decay [..."
+        }
+      ]
+    },
+    {
+      "session": "ML Engineer",
+      "room": "model_training",
+      "turn_id": 3,
+      "action": "query",
+      "query": "What hyperparameter values did Optuna select as optimal for this training run?",
+      "expected_fact_ids": [
+        2
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 0.9999998807907104,
+        "latency_ms": 111.88
+      },
+      "top_5_chunks": [
+        {
+          "id": 3,
+          "score": 0.0155,
+          "preview": "Hyperparameter search used Optuna with 200 trials over the space: learning rate [1e-4, 1e-2] log-uniform, weight decay [..."
+        },
+        {
+          "id": 1,
+          "score": 0.0079,
+          "preview": "Model resnet-finetune-v3 is a ResNet-50 fine-tuned on 450,000 images across 15 product categories. Training took 72 GPU-..."
+        },
+        {
+          "id": 4,
+          "score": 0.0074,
+          "preview": "Deployment runs on Triton Inference Server with dynamic batching (max batch 32, timeout 100us). The ONNX export used ops..."
+        },
+        {
+          "id": 2,
+          "score": 0.0068,
+          "preview": "The training data pipeline ingests images from S3, applies augmentation (random crop, horizontal flip, color jitter with..."
+        },
+        {
+          "id": 5,
+          "score": 0.0062,
+          "preview": "Model monitoring tracks data drift using PSI (Population Stability Index) on input feature distributions. Alert threshol..."
+        }
+      ]
+    },
+    {
+      "session": "ML Engineer",
+      "room": "model_training",
+      "turn_id": 4,
+      "action": "query",
+      "query": "What is the INT8 model size after quantization and what was the accuracy impact?",
+      "expected_fact_ids": [
+        3
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0,
+        "latency_ms": 16.74
+      },
+      "top_5_chunks": [
+        {
+          "id": 4,
+          "score": 0.0103,
+          "preview": "Deployment runs on Triton Inference Server with dynamic batching (max batch 32, timeout 100us). The ONNX export used ops..."
+        },
+        {
+          "id": 1,
+          "score": 0.0084,
+          "preview": "Model resnet-finetune-v3 is a ResNet-50 fine-tuned on 450,000 images across 15 product categories. Training took 72 GPU-..."
+        },
+        {
+          "id": 5,
+          "score": 0.0069,
+          "preview": "Model monitoring tracks data drift using PSI (Population Stability Index) on input feature distributions. Alert threshol..."
+        },
+        {
+          "id": 2,
+          "score": 0.0068,
+          "preview": "The training data pipeline ingests images from S3, applies augmentation (random crop, horizontal flip, color jitter with..."
+        },
+        {
+          "id": 3,
+          "score": 0.0056,
+          "preview": "Hyperparameter search used Optuna with 200 trials over the space: learning rate [1e-4, 1e-2] log-uniform, weight decay [..."
+        }
+      ]
+    },
+    {
+      "session": "ML Engineer",
+      "room": "model_training",
+      "turn_id": 4,
+      "action": "query",
+      "query": "How is data drift monitored and what is the current alert threshold?",
+      "expected_fact_ids": [
+        4
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0,
+        "latency_ms": 114.37
+      },
+      "top_5_chunks": [
+        {
+          "id": 5,
+          "score": 0.0128,
+          "preview": "Model monitoring tracks data drift using PSI (Population Stability Index) on input feature distributions. Alert threshol..."
+        },
+        {
+          "id": 2,
+          "score": 0.0055,
+          "preview": "The training data pipeline ingests images from S3, applies augmentation (random crop, horizontal flip, color jitter with..."
+        },
+        {
+          "id": 6,
+          "score": 0.0047,
+          "preview": "The training infrastructure uses Kubernetes on GKE with the nvidia/gpu-operator for driver management. Jobs are submitte..."
+        },
+        {
+          "id": 4,
+          "score": 0.0045,
+          "preview": "Deployment runs on Triton Inference Server with dynamic batching (max batch 32, timeout 100us). The ONNX export used ops..."
+        },
+        {
+          "id": 3,
+          "score": 0.0039,
+          "preview": "Hyperparameter search used Optuna with 200 trials over the space: learning rate [1e-4, 1e-2] log-uniform, weight decay [..."
+        }
+      ]
+    },
+    {
+      "session": "Medical Researcher",
+      "room": "clinical_trials",
+      "turn_id": 1,
+      "action": "store",
+      "facts_stored": 3
+    },
+    {
+      "session": "Medical Researcher",
+      "room": "clinical_trials",
+      "turn_id": 2,
+      "action": "store",
+      "facts_stored": 3
+    },
+    {
+      "session": "Medical Researcher",
+      "room": "clinical_trials",
+      "turn_id": 3,
+      "action": "query",
+      "query": "What was the primary endpoint of the TRILUMINATE trial and was it met?",
+      "expected_fact_ids": [
+        0
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0000001192092896,
+        "latency_ms": 99.68
+      },
+      "top_5_chunks": [
+        {
+          "id": 2,
+          "score": 0.0103,
+          "preview": "Safety analysis for TRILUMINATE: major adverse events occurred in 1.7% of device group vs 0.6% control at 30 days (p=0.3..."
+        },
+        {
+          "id": 1,
+          "score": 0.0098,
+          "preview": "Phase III trial TRILUMINATE (NCT03904147) evaluated the TriClip transcatheter tricuspid valve repair system in 350 patie..."
+        },
+        {
+          "id": 4,
+          "score": 0.0055,
+          "preview": "Companion diagnostics (CDx) are tests that identify patients most likely to benefit from a specific therapy. FDA require..."
+        },
+        {
+          "id": 3,
+          "score": 0.0054,
+          "preview": "The TRILUMINATE quality-of-life secondary endpoint used the Kansas City Cardiomyopathy Questionnaire (KCCQ). At 1 year, ..."
+        },
+        {
+          "id": 5,
+          "score": 0.0045,
+          "preview": "The KEYNOTE-024 trial established pembrolizumab as first-line therapy for NSCLC patients with PD-L1 TPS \u226550%. Median ove..."
+        }
+      ]
+    },
+    {
+      "session": "Medical Researcher",
+      "room": "clinical_trials",
+      "turn_id": 3,
+      "action": "query",
+      "query": "For which cancer type did KEYNOTE-024 establish pembrolizumab as first-line therapy and what was the required PD-L1 threshold?",
+      "expected_fact_ids": [
+        4
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 0.9999998807907104,
+        "latency_ms": 21.89
+      },
+      "top_5_chunks": [
+        {
+          "id": 5,
+          "score": 0.0149,
+          "preview": "The KEYNOTE-024 trial established pembrolizumab as first-line therapy for NSCLC patients with PD-L1 TPS \u226550%. Median ove..."
+        },
+        {
+          "id": 6,
+          "score": 0.0115,
+          "preview": "NGS-based tumor mutation burden (TMB) is an emerging biomarker for immunotherapy response. KEYNOTE-158 validated TMB-H (..."
+        },
+        {
+          "id": 4,
+          "score": 0.0082,
+          "preview": "Companion diagnostics (CDx) are tests that identify patients most likely to benefit from a specific therapy. FDA require..."
+        },
+        {
+          "id": 3,
+          "score": 0.0047,
+          "preview": "The TRILUMINATE quality-of-life secondary endpoint used the Kansas City Cardiomyopathy Questionnaire (KCCQ). At 1 year, ..."
+        },
+        {
+          "id": 1,
+          "score": 0.0046,
+          "preview": "Phase III trial TRILUMINATE (NCT03904147) evaluated the TriClip transcatheter tricuspid valve repair system in 350 patie..."
+        }
+      ]
+    },
+    {
+      "session": "Medical Researcher",
+      "room": "clinical_trials",
+      "turn_id": 4,
+      "action": "query",
+      "query": "What quality-of-life metric was used in TRILUMINATE and what was the between-group difference?",
+      "expected_fact_ids": [
+        2
+      ],
+      "metrics": {
+        "recall_1": 0.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0000001192092896,
+        "latency_ms": 30.07
+      },
+      "top_5_chunks": [
+        {
+          "id": 2,
+          "score": 0.0102,
+          "preview": "Safety analysis for TRILUMINATE: major adverse events occurred in 1.7% of device group vs 0.6% control at 30 days (p=0.3..."
+        },
+        {
+          "id": 1,
+          "score": 0.0099,
+          "preview": "Phase III trial TRILUMINATE (NCT03904147) evaluated the TriClip transcatheter tricuspid valve repair system in 350 patie..."
+        },
+        {
+          "id": 3,
+          "score": 0.0093,
+          "preview": "The TRILUMINATE quality-of-life secondary endpoint used the Kansas City Cardiomyopathy Questionnaire (KCCQ). At 1 year, ..."
+        },
+        {
+          "id": 4,
+          "score": 0.0042,
+          "preview": "Companion diagnostics (CDx) are tests that identify patients most likely to benefit from a specific therapy. FDA require..."
+        },
+        {
+          "id": 5,
+          "score": 0.0034,
+          "preview": "The KEYNOTE-024 trial established pembrolizumab as first-line therapy for NSCLC patients with PD-L1 TPS \u226550%. Median ove..."
+        }
+      ]
+    },
+    {
+      "session": "Medical Researcher",
+      "room": "clinical_trials",
+      "turn_id": 4,
+      "action": "query",
+      "query": "What genomic biomarker was validated by KEYNOTE-158 for tissue-agnostic pembrolizumab approval?",
+      "expected_fact_ids": [
+        5
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0,
+        "latency_ms": 187.17
+      },
+      "top_5_chunks": [
+        {
+          "id": 6,
+          "score": 0.0164,
+          "preview": "NGS-based tumor mutation burden (TMB) is an emerging biomarker for immunotherapy response. KEYNOTE-158 validated TMB-H (..."
+        },
+        {
+          "id": 5,
+          "score": 0.0132,
+          "preview": "The KEYNOTE-024 trial established pembrolizumab as first-line therapy for NSCLC patients with PD-L1 TPS \u226550%. Median ove..."
+        },
+        {
+          "id": 4,
+          "score": 0.0104,
+          "preview": "Companion diagnostics (CDx) are tests that identify patients most likely to benefit from a specific therapy. FDA require..."
+        },
+        {
+          "id": 3,
+          "score": 0.0052,
+          "preview": "The TRILUMINATE quality-of-life secondary endpoint used the Kansas City Cardiomyopathy Questionnaire (KCCQ). At 1 year, ..."
+        },
+        {
+          "id": 1,
+          "score": 0.0042,
+          "preview": "Phase III trial TRILUMINATE (NCT03904147) evaluated the TriClip transcatheter tricuspid valve repair system in 350 patie..."
+        }
+      ]
+    },
+    {
+      "session": "QA Assistant",
+      "room": "fact_check",
+      "turn_id": 1,
+      "action": "store",
+      "facts_stored": 3
+    },
+    {
+      "session": "QA Assistant",
+      "room": "fact_check",
+      "turn_id": 2,
+      "action": "store",
+      "facts_stored": 3
+    },
+    {
+      "session": "QA Assistant",
+      "room": "fact_check",
+      "turn_id": 3,
+      "action": "query",
+      "query": "What key features were added in Python 3.13 and when was it released?",
+      "expected_fact_ids": [
+        0
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0,
+        "latency_ms": 14.96
+      },
+      "top_5_chunks": [
+        {
+          "id": 1,
+          "score": 0.0141,
+          "preview": "Python 3.13 was released on October 7, 2024. Key features: experimental JIT compiler (copy-and-patch), new interactive i..."
+        },
+        {
+          "id": 2,
+          "score": 0.0089,
+          "preview": "Django 5.1 (August 2024) introduced QuerySet explain() with generic plans, asynchronous authentication backends, templat..."
+        },
+        {
+          "id": 3,
+          "score": 0.0049,
+          "preview": "Rust 1.80 (July 2024) added LazyLock and LazyCell types for lazy initialization. Rust 1.82 (October 2024) stabilized raw..."
+        },
+        {
+          "id": 5,
+          "score": 0.0044,
+          "preview": "The European Cyber Resilience Act (CRA) was adopted in October 2024 and will be enforced starting 2027. It requires manu..."
+        },
+        {
+          "id": 4,
+          "score": 0.0042,
+          "preview": "The xz utils backdoor (CVE-2024-3094) was discovered in March 2024 by Andres Freund, a Microsoft PostgreSQL developer wh..."
+        }
+      ]
+    },
+    {
+      "session": "QA Assistant",
+      "room": "fact_check",
+      "turn_id": 3,
+      "action": "query",
+      "query": "Who discovered the xz utils backdoor and what was the immediate symptom they noticed?",
+      "expected_fact_ids": [
+        3
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0000001192092896,
+        "latency_ms": 248.38
+      },
+      "top_5_chunks": [
+        {
+          "id": 4,
+          "score": 0.0148,
+          "preview": "The xz utils backdoor (CVE-2024-3094) was discovered in March 2024 by Andres Freund, a Microsoft PostgreSQL developer wh..."
+        },
+        {
+          "id": 6,
+          "score": 0.0048,
+          "preview": "The CrowdStrike Falcon sensor update on July 19, 2024 caused a global IT outage affecting 8.5 million Windows devices. A..."
+        },
+        {
+          "id": 2,
+          "score": 0.0045,
+          "preview": "Django 5.1 (August 2024) introduced QuerySet explain() with generic plans, asynchronous authentication backends, templat..."
+        },
+        {
+          "id": 3,
+          "score": 0.0041,
+          "preview": "Rust 1.80 (July 2024) added LazyLock and LazyCell types for lazy initialization. Rust 1.82 (October 2024) stabilized raw..."
+        },
+        {
+          "id": 5,
+          "score": 0.004,
+          "preview": "The European Cyber Resilience Act (CRA) was adopted in October 2024 and will be enforced starting 2027. It requires manu..."
+        }
+      ]
+    },
+    {
+      "session": "QA Assistant",
+      "room": "fact_check",
+      "turn_id": 4,
+      "action": "query",
+      "query": "What new database features did Django 5.1 introduce?",
+      "expected_fact_ids": [
+        1
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0,
+        "latency_ms": 11.39
+      },
+      "top_5_chunks": [
+        {
+          "id": 2,
+          "score": 0.0148,
+          "preview": "Django 5.1 (August 2024) introduced QuerySet explain() with generic plans, asynchronous authentication backends, templat..."
+        },
+        {
+          "id": 1,
+          "score": 0.0072,
+          "preview": "Python 3.13 was released on October 7, 2024. Key features: experimental JIT compiler (copy-and-patch), new interactive i..."
+        },
+        {
+          "id": 3,
+          "score": 0.0053,
+          "preview": "Rust 1.80 (July 2024) added LazyLock and LazyCell types for lazy initialization. Rust 1.82 (October 2024) stabilized raw..."
+        },
+        {
+          "id": 6,
+          "score": 0.0048,
+          "preview": "The CrowdStrike Falcon sensor update on July 19, 2024 caused a global IT outage affecting 8.5 million Windows devices. A..."
+        },
+        {
+          "id": 4,
+          "score": 0.0023,
+          "preview": "The xz utils backdoor (CVE-2024-3094) was discovered in March 2024 by Andres Freund, a Microsoft PostgreSQL developer wh..."
+        }
+      ]
+    },
+    {
+      "session": "QA Assistant",
+      "room": "fact_check",
+      "turn_id": 4,
+      "action": "query",
+      "query": "What was the root cause of the CrowdStrike outage and how many devices were affected?",
+      "expected_fact_ids": [
+        5
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0,
+        "latency_ms": 15.02
+      },
+      "top_5_chunks": [
+        {
+          "id": 6,
+          "score": 0.0135,
+          "preview": "The CrowdStrike Falcon sensor update on July 19, 2024 caused a global IT outage affecting 8.5 million Windows devices. A..."
+        },
+        {
+          "id": 4,
+          "score": 0.006,
+          "preview": "The xz utils backdoor (CVE-2024-3094) was discovered in March 2024 by Andres Freund, a Microsoft PostgreSQL developer wh..."
+        },
+        {
+          "id": 5,
+          "score": 0.0058,
+          "preview": "The European Cyber Resilience Act (CRA) was adopted in October 2024 and will be enforced starting 2027. It requires manu..."
+        },
+        {
+          "id": 1,
+          "score": 0.0026,
+          "preview": "Python 3.13 was released on October 7, 2024. Key features: experimental JIT compiler (copy-and-patch), new interactive i..."
+        },
+        {
+          "id": 3,
+          "score": 0.002,
+          "preview": "Rust 1.80 (July 2024) added LazyLock and LazyCell types for lazy initialization. Rust 1.82 (October 2024) stabilized raw..."
+        }
+      ]
+    },
+    {
+      "session": "Architecture Reviewer",
+      "room": "system_design",
+      "turn_id": 1,
+      "action": "store",
+      "facts_stored": 3
+    },
+    {
+      "session": "Architecture Reviewer",
+      "room": "system_design",
+      "turn_id": 2,
+      "action": "store",
+      "facts_stored": 3
+    },
+    {
+      "session": "Architecture Reviewer",
+      "room": "system_design",
+      "turn_id": 3,
+      "action": "query",
+      "query": "What payment providers does the payment gateway support and how does it ensure safe retries?",
+      "expected_fact_ids": [
+        0
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0,
+        "latency_ms": 20.66
+      },
+      "top_5_chunks": [
+        {
+          "id": 1,
+          "score": 0.0107,
+          "preview": "Service 'payment-gateway' processes Stripe, PayPal, and Adyen payments through a unified adapter pattern. The gateway im..."
+        },
+        {
+          "id": 2,
+          "score": 0.0072,
+          "preview": "The notification service 'notify-hub' sends push (FCM/APNs), email (SendGrid), SMS (Twilio), and in-app (WebSocket) noti..."
+        },
+        {
+          "id": 3,
+          "score": 0.0055,
+          "preview": "Database strategy: PostgreSQL (via RDS Proxy) for transactional data with PgBouncer connection pooling (pool_mode=transa..."
+        },
+        {
+          "id": 6,
+          "score": 0.0033,
+          "preview": "Autoscaling: HPA (Horizontal Pod Autoscaler) on CPU (target 70%) and custom metrics (requests/second from Prometheus). K..."
+        },
+        {
+          "id": 5,
+          "score": 0.0024,
+          "preview": "Observability stack: OpenTelemetry SDK for traces (exported to Tempo via OTLP gRPC), structured JSON logs to Loki (via P..."
+        }
+      ]
+    },
+    {
+      "session": "Architecture Reviewer",
+      "room": "system_design",
+      "turn_id": 3,
+      "action": "query",
+      "query": "What is the total pipeline time from commit to production deployment?",
+      "expected_fact_ids": [
+        3
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0,
+        "latency_ms": 12.62
+      },
+      "top_5_chunks": [
+        {
+          "id": 4,
+          "score": 0.014,
+          "preview": "Deployment pipeline: GitHub Actions \u2192 Build (Docker multi-stage, layer caching) \u2192 Test (unit + integration + contract te..."
+        },
+        {
+          "id": 6,
+          "score": 0.0059,
+          "preview": "Autoscaling: HPA (Horizontal Pod Autoscaler) on CPU (target 70%) and custom metrics (requests/second from Prometheus). K..."
+        },
+        {
+          "id": 5,
+          "score": 0.0055,
+          "preview": "Observability stack: OpenTelemetry SDK for traces (exported to Tempo via OTLP gRPC), structured JSON logs to Loki (via P..."
+        },
+        {
+          "id": 2,
+          "score": 0.0048,
+          "preview": "The notification service 'notify-hub' sends push (FCM/APNs), email (SendGrid), SMS (Twilio), and in-app (WebSocket) noti..."
+        },
+        {
+          "id": 1,
+          "score": 0.0043,
+          "preview": "Service 'payment-gateway' processes Stripe, PayPal, and Adyen payments through a unified adapter pattern. The gateway im..."
+        }
+      ]
+    },
+    {
+      "session": "Architecture Reviewer",
+      "room": "system_design",
+      "turn_id": 4,
+      "action": "query",
+      "query": "What notification channels does notify-hub support and what are the priority tiers?",
+      "expected_fact_ids": [
+        1
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0000001192092896,
+        "latency_ms": 32.15
+      },
+      "top_5_chunks": [
+        {
+          "id": 2,
+          "score": 0.0153,
+          "preview": "The notification service 'notify-hub' sends push (FCM/APNs), email (SendGrid), SMS (Twilio), and in-app (WebSocket) noti..."
+        },
+        {
+          "id": 1,
+          "score": 0.0066,
+          "preview": "Service 'payment-gateway' processes Stripe, PayPal, and Adyen payments through a unified adapter pattern. The gateway im..."
+        },
+        {
+          "id": 6,
+          "score": 0.006,
+          "preview": "Autoscaling: HPA (Horizontal Pod Autoscaler) on CPU (target 70%) and custom metrics (requests/second from Prometheus). K..."
+        },
+        {
+          "id": 3,
+          "score": 0.0049,
+          "preview": "Database strategy: PostgreSQL (via RDS Proxy) for transactional data with PgBouncer connection pooling (pool_mode=transa..."
+        },
+        {
+          "id": 5,
+          "score": 0.0034,
+          "preview": "Observability stack: OpenTelemetry SDK for traces (exported to Tempo via OTLP gRPC), structured JSON logs to Loki (via P..."
+        }
+      ]
+    },
+    {
+      "session": "Architecture Reviewer",
+      "room": "system_design",
+      "turn_id": 4,
+      "action": "query",
+      "query": "What scaling mechanisms are used and what is the cold start time?",
+      "expected_fact_ids": [
+        5
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0000001192092896,
+        "latency_ms": 23.15
+      },
+      "top_5_chunks": [
+        {
+          "id": 6,
+          "score": 0.0104,
+          "preview": "Autoscaling: HPA (Horizontal Pod Autoscaler) on CPU (target 70%) and custom metrics (requests/second from Prometheus). K..."
+        },
+        {
+          "id": 3,
+          "score": 0.0053,
+          "preview": "Database strategy: PostgreSQL (via RDS Proxy) for transactional data with PgBouncer connection pooling (pool_mode=transa..."
+        },
+        {
+          "id": 1,
+          "score": 0.0053,
+          "preview": "Service 'payment-gateway' processes Stripe, PayPal, and Adyen payments through a unified adapter pattern. The gateway im..."
+        },
+        {
+          "id": 2,
+          "score": 0.0052,
+          "preview": "The notification service 'notify-hub' sends push (FCM/APNs), email (SendGrid), SMS (Twilio), and in-app (WebSocket) noti..."
+        },
+        {
+          "id": 4,
+          "score": 0.005,
+          "preview": "Deployment pipeline: GitHub Actions \u2192 Build (Docker multi-stage, layer caching) \u2192 Test (unit + integration + contract te..."
+        }
+      ]
+    },
+    {
+      "session": "Climate Analyst",
+      "room": "emissions_data",
+      "turn_id": 1,
+      "action": "store",
+      "facts_stored": 3
+    },
+    {
+      "session": "Climate Analyst",
+      "room": "emissions_data",
+      "turn_id": 2,
+      "action": "store",
+      "facts_stored": 3
+    },
+    {
+      "session": "Climate Analyst",
+      "room": "emissions_data",
+      "turn_id": 3,
+      "action": "query",
+      "query": "What is EcoCoat's Scope 1 emissions for 2023 and what is their main source?",
+      "expected_fact_ids": [
+        0
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0000001192092896,
+        "latency_ms": 44.68
+      },
+      "top_5_chunks": [
+        {
+          "id": 2,
+          "score": 0.0138,
+          "preview": "EcoCoat's emission reduction targets: 50% reduction in Scope 1 and 2 by 2030 (vs 2023 baseline), net zero by 2045. Curre..."
+        },
+        {
+          "id": 3,
+          "score": 0.0118,
+          "preview": "EcoCoat verified their 2023 emissions through an independent auditor per ISO 14064-3. Their GHG inventory follows the GH..."
+        },
+        {
+          "id": 1,
+          "score": 0.0115,
+          "preview": "Company EcoCoat manufactures sustainable industrial coatings using bio-based epoxy (derived from soybean oil). 2023 prod..."
+        },
+        {
+          "id": 6,
+          "score": 0.0098,
+          "preview": "SolarGrid's 2023 CDP (Carbon Disclosure Project) score is A- (Leadership level). They report Scope 1 emissions of 1,200 ..."
+        },
+        {
+          "id": 5,
+          "score": 0.0053,
+          "preview": "SolarGrid's newest project, the Antelope Valley Solar Farm (Nevada, 450 MW), uses bifacial PERC modules on single-axis t..."
+        }
+      ]
+    },
+    {
+      "session": "Climate Analyst",
+      "room": "emissions_data",
+      "turn_id": 3,
+      "action": "query",
+      "query": "How many solar farms does SolarGrid operate and what is their total capacity?",
+      "expected_fact_ids": [
+        3
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0000001192092896,
+        "latency_ms": 109.28
+      },
+      "top_5_chunks": [
+        {
+          "id": 4,
+          "score": 0.0157,
+          "preview": "Company SolarGrid operates 18 utility-scale solar farms totaling 2.8 GW capacity across Texas, Arizona, Nevada, and Cali..."
+        },
+        {
+          "id": 5,
+          "score": 0.0126,
+          "preview": "SolarGrid's newest project, the Antelope Valley Solar Farm (Nevada, 450 MW), uses bifacial PERC modules on single-axis t..."
+        },
+        {
+          "id": 6,
+          "score": 0.0091,
+          "preview": "SolarGrid's 2023 CDP (Carbon Disclosure Project) score is A- (Leadership level). They report Scope 1 emissions of 1,200 ..."
+        },
+        {
+          "id": 2,
+          "score": 0.0059,
+          "preview": "EcoCoat's emission reduction targets: 50% reduction in Scope 1 and 2 by 2030 (vs 2023 baseline), net zero by 2045. Curre..."
+        },
+        {
+          "id": 3,
+          "score": 0.0049,
+          "preview": "EcoCoat verified their 2023 emissions through an independent auditor per ISO 14064-3. Their GHG inventory follows the GH..."
+        }
+      ]
+    },
+    {
+      "session": "Climate Analyst",
+      "room": "emissions_data",
+      "turn_id": 4,
+      "action": "query",
+      "query": "What are EcoCoat's targeted emission reductions by 2026 and through which initiatives?",
+      "expected_fact_ids": [
+        1
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0,
+        "latency_ms": 15.36
+      },
+      "top_5_chunks": [
+        {
+          "id": 2,
+          "score": 0.0167,
+          "preview": "EcoCoat's emission reduction targets: 50% reduction in Scope 1 and 2 by 2030 (vs 2023 baseline), net zero by 2045. Curre..."
+        },
+        {
+          "id": 3,
+          "score": 0.0112,
+          "preview": "EcoCoat verified their 2023 emissions through an independent auditor per ISO 14064-3. Their GHG inventory follows the GH..."
+        },
+        {
+          "id": 1,
+          "score": 0.0108,
+          "preview": "Company EcoCoat manufactures sustainable industrial coatings using bio-based epoxy (derived from soybean oil). 2023 prod..."
+        },
+        {
+          "id": 6,
+          "score": 0.0099,
+          "preview": "SolarGrid's 2023 CDP (Carbon Disclosure Project) score is A- (Leadership level). They report Scope 1 emissions of 1,200 ..."
+        },
+        {
+          "id": 4,
+          "score": 0.0054,
+          "preview": "Company SolarGrid operates 18 utility-scale solar farms totaling 2.8 GW capacity across Texas, Arizona, Nevada, and Cali..."
+        }
+      ]
+    },
+    {
+      "session": "Climate Analyst",
+      "room": "emissions_data",
+      "turn_id": 4,
+      "action": "query",
+      "query": "What battery storage does the Antelope Valley project include and what is its duration?",
+      "expected_fact_ids": [
+        4
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0000001192092896,
+        "latency_ms": 13.26
+      },
+      "top_5_chunks": [
+        {
+          "id": 5,
+          "score": 0.0128,
+          "preview": "SolarGrid's newest project, the Antelope Valley Solar Farm (Nevada, 450 MW), uses bifacial PERC modules on single-axis t..."
+        },
+        {
+          "id": 4,
+          "score": 0.0074,
+          "preview": "Company SolarGrid operates 18 utility-scale solar farms totaling 2.8 GW capacity across Texas, Arizona, Nevada, and Cali..."
+        },
+        {
+          "id": 6,
+          "score": 0.0071,
+          "preview": "SolarGrid's 2023 CDP (Carbon Disclosure Project) score is A- (Leadership level). They report Scope 1 emissions of 1,200 ..."
+        },
+        {
+          "id": 2,
+          "score": 0.0056,
+          "preview": "EcoCoat's emission reduction targets: 50% reduction in Scope 1 and 2 by 2030 (vs 2023 baseline), net zero by 2045. Curre..."
+        },
+        {
+          "id": 3,
+          "score": 0.0051,
+          "preview": "EcoCoat verified their 2023 emissions through an independent auditor per ISO 14064-3. Their GHG inventory follows the GH..."
+        }
+      ]
+    },
+    {
+      "session": "Database Admin",
+      "room": "db_configs",
+      "turn_id": 1,
+      "action": "store",
+      "facts_stored": 3
+    },
+    {
+      "session": "Database Admin",
+      "room": "db_configs",
+      "turn_id": 2,
+      "action": "store",
+      "facts_stored": 3
+    },
+    {
+      "session": "Database Admin",
+      "room": "db_configs",
+      "turn_id": 3,
+      "action": "query",
+      "query": "What replication feature did PostgreSQL 16 add and what backup feature did PostgreSQL 17 add?",
+      "expected_fact_ids": [
+        0
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0000001192092896,
+        "latency_ms": 15.85
+      },
+      "top_5_chunks": [
+        {
+          "id": 2,
+          "score": 0.0126,
+          "preview": "PostgreSQL 17 (September 2024) added: incremental backup support via pg_basebackup --incremental, MERGE command enhancem..."
+        },
+        {
+          "id": 1,
+          "score": 0.0121,
+          "preview": "PostgreSQL 16 (September 2023) introduced: logical replication from standbys, SQL/JSON constructors and identity functio..."
+        },
+        {
+          "id": 3,
+          "score": 0.0089,
+          "preview": "Current production cluster runs PostgreSQL 16.3 on AWS RDS with db.r6g.8xlarge (32 vCPU, 256GB RAM). Configuration: shar..."
+        },
+        {
+          "id": 4,
+          "score": 0.005,
+          "preview": "Redis 7.2 (August 2023) introduced: client-side caching with server-assisted tracking (RESP3 protocol), sharded pub/sub ..."
+        },
+        {
+          "id": 6,
+          "score": 0.0044,
+          "preview": "Migration plan for Redis 7.4: upgrading from ElastiCache 7.1 to 7.4 in Q1 2025. Key benefits sought: hash field expirati..."
+        }
+      ]
+    },
+    {
+      "session": "Database Admin",
+      "room": "db_configs",
+      "turn_id": 3,
+      "action": "query",
+      "query": "What new expiration capability did Redis 7.4 introduce?",
+      "expected_fact_ids": [
+        3
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 0.9999999403953552,
+        "latency_ms": 12.19
+      },
+      "top_5_chunks": [
+        {
+          "id": 4,
+          "score": 0.0125,
+          "preview": "Redis 7.2 (August 2023) introduced: client-side caching with server-assisted tracking (RESP3 protocol), sharded pub/sub ..."
+        },
+        {
+          "id": 6,
+          "score": 0.0116,
+          "preview": "Migration plan for Redis 7.4: upgrading from ElastiCache 7.1 to 7.4 in Q1 2025. Key benefits sought: hash field expirati..."
+        },
+        {
+          "id": 5,
+          "score": 0.0101,
+          "preview": "Current Redis deployment: ElastiCache Serverless with max capacity 500,000 requests/second. Used for: session store (pre..."
+        },
+        {
+          "id": 1,
+          "score": 0.0056,
+          "preview": "PostgreSQL 16 (September 2023) introduced: logical replication from standbys, SQL/JSON constructors and identity functio..."
+        },
+        {
+          "id": 3,
+          "score": 0.0032,
+          "preview": "Current production cluster runs PostgreSQL 16.3 on AWS RDS with db.r6g.8xlarge (32 vCPU, 256GB RAM). Configuration: shar..."
+        }
+      ]
+    },
+    {
+      "session": "Database Admin",
+      "room": "db_configs",
+      "turn_id": 4,
+      "action": "query",
+      "query": "What are the key PostgreSQL configuration values for the production cluster and what is the RPO?",
+      "expected_fact_ids": [
+        2
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0,
+        "latency_ms": 14.3
+      },
+      "top_5_chunks": [
+        {
+          "id": 3,
+          "score": 0.0121,
+          "preview": "Current production cluster runs PostgreSQL 16.3 on AWS RDS with db.r6g.8xlarge (32 vCPU, 256GB RAM). Configuration: shar..."
+        },
+        {
+          "id": 1,
+          "score": 0.0089,
+          "preview": "PostgreSQL 16 (September 2023) introduced: logical replication from standbys, SQL/JSON constructors and identity functio..."
+        },
+        {
+          "id": 5,
+          "score": 0.0086,
+          "preview": "Current Redis deployment: ElastiCache Serverless with max capacity 500,000 requests/second. Used for: session store (pre..."
+        },
+        {
+          "id": 2,
+          "score": 0.008,
+          "preview": "PostgreSQL 17 (September 2024) added: incremental backup support via pg_basebackup --incremental, MERGE command enhancem..."
+        },
+        {
+          "id": 4,
+          "score": 0.0075,
+          "preview": "Redis 7.2 (August 2023) introduced: client-side caching with server-assisted tracking (RESP3 protocol), sharded pub/sub ..."
+        }
+      ]
+    },
+    {
+      "session": "Database Admin",
+      "room": "db_configs",
+      "turn_id": 4,
+      "action": "query",
+      "query": "What is the Redis migration strategy for the 7.4 upgrade and what is the rollback plan?",
+      "expected_fact_ids": [
+        5
+      ],
+      "metrics": {
+        "recall_1": 1.0,
+        "recall_5": 1.0,
+        "recall_10": 1.0,
+        "semantic_similarity": 1.0,
+        "latency_ms": 195.55
+      },
+      "top_5_chunks": [
+        {
+          "id": 6,
+          "score": 0.0169,
+          "preview": "Migration plan for Redis 7.4: upgrading from ElastiCache 7.1 to 7.4 in Q1 2025. Key benefits sought: hash field expirati..."
+        },
+        {
+          "id": 4,
+          "score": 0.0101,
+          "preview": "Redis 7.2 (August 2023) introduced: client-side caching with server-assisted tracking (RESP3 protocol), sharded pub/sub ..."
+        },
+        {
+          "id": 5,
+          "score": 0.0098,
+          "preview": "Current Redis deployment: ElastiCache Serverless with max capacity 500,000 requests/second. Used for: session store (pre..."
+        },
+        {
+          "id": 2,
+          "score": 0.0071,
+          "preview": "PostgreSQL 17 (September 2024) added: incremental backup support via pg_basebackup --incremental, MERGE command enhancem..."
+        },
+        {
+          "id": 1,
+          "score": 0.006,
+          "preview": "PostgreSQL 16 (September 2023) introduced: logical replication from standbys, SQL/JSON constructors and identity functio..."
+        }
+      ]
+    }
+  ]
+}
