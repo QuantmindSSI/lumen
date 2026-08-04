@@ -321,9 +321,9 @@ def _recall_at_k(retrieved, relevant, k):
 def _ndcg_at_k(retrieved, relevant, k):
     if not relevant:
         return 0.0
-    dcg = sum((2.0 - 1) / math.log2(i + 2) if cid in relevant else 0.0
+    dcg = sum((2.0**1 - 1) / math.log2(i + 2) if cid in relevant else 0.0
               for i, cid in enumerate(retrieved[:k]))
-    ideal = sum((2.0 - 1) / math.log2(i + 2)
+    ideal = sum((2.0**1 - 1) / math.log2(i + 2)
                 for i in range(min(len(relevant), k)))
     return dcg / ideal if ideal > 0 else 0.0
 

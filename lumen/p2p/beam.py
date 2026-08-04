@@ -93,6 +93,7 @@ class BeamNode:
 
     async def start(self) -> None:
         """Register the local mDNS service and start listening for peers."""
+        self.config.assert_sovereign("beam_p2p_start")
         self._azc = AsyncZeroconf()
         info = ServiceInfo(
             self.service_type,
@@ -164,6 +165,7 @@ class BeamNode:
 
     async def share_room(self, room_name: str, ttl_hours: int = 24) -> None:
         """Fetch all active chunks from *room_name* and broadcast them to peers."""
+        self.config.assert_sovereign("beam_p2p_share")
         conn = get_connection(self.config)
         try:
             rows = conn.execute(
@@ -185,6 +187,7 @@ class BeamNode:
 
     async def _send(self, addr: tuple[str, int], packet: dict) -> None:
         """Open a TCP connection to *addr*, send the framed packet, and close."""
+        self.config.assert_sovereign("beam_p2p_send")
         host, port = addr
         try:
             _reader, writer = await asyncio.wait_for(

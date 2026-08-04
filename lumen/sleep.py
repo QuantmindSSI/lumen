@@ -76,6 +76,8 @@ class SleepScheduler:
                 batcher = WearAwareBatcher(conn)
                 run_consolidation_pass(self.config, batcher=batcher)
                 ebbinghaus_decay(conn, batcher=batcher)
+                from lumen.force.mnemonic.forgetting_l3_budget import budget_curated_eviction
+                budget_curated_eviction(conn, self.config, batcher=batcher)
                 if batcher.queue:
                     batcher.flush_sync(list(batcher.queue))
                     batcher.queue.clear()

@@ -38,8 +38,7 @@ class LumenConfig(BaseSettings):
     embedding_model: str = "bge-small-en-v1.5"
     embedding_dims: int = 384
     vector_index: Literal["sqlite-vec", "usearch"] = "sqlite-vec"
-    enable_kuzu: bool = False
-    enable_frqad: bool = False
+    enable_frqad: bool = True
     enable_local_llm: bool = False
     local_llm_model: str = "Qwen3-1.7B-Q4_K_M.gguf"
     consolidation_cpu_percent: float = 5.0
@@ -51,6 +50,7 @@ class LumenConfig(BaseSettings):
     store_path: Path = Path.home() / ".lumen" / "store"
     model_path: Path = Path.home() / ".lumen" / "models"
     cache_path: Path = Path.home() / ".lumen" / "cache"
+    memory_budget_mb: int = 64
     sovereign: bool = True
     log_level: str = "info"
     api_host: str = "0.0.0.0"
@@ -60,7 +60,8 @@ class LumenConfig(BaseSettings):
     allowed_origins: str = "http://localhost:8000,http://localhost:8848"
     request_max_size_bytes: int = 1_048_576
     pii_detection_enabled: bool = True
-    pii_redaction_mode: str = "redact"  # block | redact | hash
+    pii_redaction_mode: Literal["block", "redact", "hash"] = "redact"
+    pii_custom_patterns: str = ""
     release_threshold: float = 0.05
     tfc_novelty_threshold: float = 0.7
     tfc_repetition_threshold: float = 0.7
@@ -73,6 +74,16 @@ class LumenConfig(BaseSettings):
     tfc_default_resolution: int = 3
 
     _resolved: bool = PrivateAttr(default=False)
+
+    def assert_sovereign(self, attempted_call: str) -> None:
+        """Raise SovereignViolationError if sovereign mode is enabled.
+
+        Call this before any operation that would touch an external network API.
+        """
+        if self.sovereign:
+            from lumen.brand.errors import SovereignViolationError
+
+            raise SovereignViolationError(attempted_call)
 
     def model_post_init(self, __context: object) -> None:
         """After field population, apply device-profile defaults."""

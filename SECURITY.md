@@ -37,7 +37,7 @@ Lumen takes security seriously. If you discover a vulnerability, please report i
 ### Sovereign-by-Default
 
 - Lumen **never** sends data to external APIs unless explicitly configured
-- `LUMEN_SOVEREIGN=true` blocks all network calls from core memory operations
+- `LUMEN_SOVEREIGN=true` (default) blocks P2P sharing, model downloads from HuggingFace, and clamps API CORS to localhost origins
 - Embedding models run locally via ONNX Runtime
 
 ### Forgetting as Security
@@ -57,6 +57,7 @@ Lumen takes security seriously. If you discover a vulnerability, please report i
 1. **No encryption at rest** — Lumen stores data in plaintext SQLite. The `encryption_provider` and `encryption_key` config fields were removed in v0.1.0-alpha to avoid false security posture. Use OS-level disk encryption (FileVault, BitLocker, LUKS) as a stopgap. SQLCipher integration is planned for v0.2.0.
 2. **API authentication is opt-in** — `X-API-Key` header validation is implemented but disabled when `LUMEN_API_KEY` is unset. Set it before exposing the server to any network.
 3. **P2P sharing is plaintext** — Beam protocol transmits over TCP without transport encryption. It is intended for trusted household LANs only. Do not expose Beam to untrusted networks.
+4. **Sovereign mode blocks P2P and downloads** — When `LUMEN_SOVEREIGN=true` (default), P2P Beam sharing and HuggingFace model downloads are blocked with `SovereignViolationError`. The API CORS policy is also clamped to localhost origins. Sovereign mode does not sandbox the host OS or prevent other non-Lumen processes from making network calls.
 
 ## Dependency Security
 

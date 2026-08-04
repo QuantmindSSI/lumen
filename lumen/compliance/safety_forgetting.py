@@ -8,7 +8,6 @@ Secret sauce: Provenance-chain deletion (GateMem requirement)
 import json
 import re
 import sqlite3
-from datetime import datetime, timezone
 from pathlib import Path
 
 from lumen.logging import get_console_logger
@@ -33,6 +32,7 @@ def safety_scan_chunk(content: str) -> list[str]:
     patterns = dict(PII_PATTERNS)
     try:
         from lumen.config import LumenConfig
+
         cfg = LumenConfig()
         if cfg.pii_custom_patterns:
             for idx, pat in enumerate(cfg.pii_custom_patterns.split(",")):
@@ -45,6 +45,46 @@ def safety_scan_chunk(content: str) -> list[str]:
         if rx.search(content):
             hits.append(rule_name)
     return hits
+
+
+def _hash_pattern(text: str, pattern_name: str) -> str:
+    """Replace matches with a stable short hash."""
+    import hashlib
+
+    rx = PII_PATTERNS.get(pattern_name)
+    if rx is None:
+        return text
+
+    def _repl(m: re.Match) -> str:
+        digest = hashlib.sha256(m.group(0).encode()).hexdigest()[:8]
+        return f"[HASH:{digest}]"
+
+    return rx.sub(_repl, text)
+
+
+def apply_pii_strategy(content: str, hits: list[str], mode: str) -> str | None:
+    """Apply the configured PII strategy.
+
+    Args:
+        content: Original chunk content.
+        hits: List of triggered PII pattern names.
+        mode: One of ``block``, ``redact``, ``hash``.
+
+    Returns:
+        Modified content string, or ``None`` if the store should be blocked.
+    """
+    if mode == "block":
+        return None
+    if mode == "hash":
+        for hit in hits:
+            content = _hash_pattern(content, hit)
+        return content
+    # Default: redact
+    for hit in hits:
+        rx = PII_PATTERNS.get(hit)
+        if rx:
+            content = rx.sub(lambda m: "[REDACTED]", content)
+    return content
 
 
 def safety_forget_chunk(conn: sqlite3.Connection, chunk_id: int, reason: str) -> None:

@@ -115,10 +115,17 @@ def fuse_and_rerank(
             cand_vec = embedding_map.get(cid)
             if cand_vec is not None:
                 try:
-                    from lumen.sovereign.frqad import compute_frqad
+                    from lumen.config import LumenConfig
+                    cfg = LumenConfig()
+                    if cfg.enable_frqad:
+                        from lumen.sovereign.frqad import compute_frqad
 
-                    frqad = compute_frqad(query_vec, cand_vec, res or "FP32")
-                    frqad_sim = 1.0 - (frqad / (np.pi / 2))
+                        frqad = compute_frqad(query_vec, cand_vec, res or "FP32")
+                        frqad_sim = 1.0 - (frqad / (np.pi / 2))
+                    else:
+                        from scipy.spatial.distance import cosine
+
+                        frqad_sim = 1.0 - cosine(query_vec, cand_vec)
                 except Exception as exc:
                     logger.debug("frqad_fallback_to_cosine", error=str(exc))
                     from scipy.spatial.distance import cosine

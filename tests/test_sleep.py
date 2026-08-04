@@ -9,12 +9,12 @@ from lumen.sleep import SleepScheduler
 
 
 @pytest.fixture
-def scheduler():
+def scheduler(tmp_path):
     """Return a SleepScheduler with a default test config."""
     config = LumenConfig(
         vector_index="sqlite-vec",
         device="generic",
-        store_path="/tmp/.lumen-test",
+        store_path=str(tmp_path / ".lumen-test"),
         consolidation_cpu_percent=10.0,
         consolidation_battery_threshold=50,
     )

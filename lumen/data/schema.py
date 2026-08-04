@@ -12,15 +12,22 @@ logger = get_console_logger(__name__)
 _SQL_PATH = Path(__file__).with_suffix(".sql")
 
 
-def _enforce_permissions(store_path: Path) -> None:
-    """Ensure ~/.lumen is 700 and database files are 600."""
+def _enforce_permissions(root_path: Path) -> None:
+    """Ensure ~/.lumen tree is 700 (dirs) and 600 (files). Fail-fast on error."""
+    if not root_path.exists():
+        return
     try:
-        os.chmod(store_path, stat.S_IRWXU)  # 0o700
-        for child in store_path.iterdir():
-            if child.suffix in (".db", ".db-wal", ".db-shm", ".toml", ".jsonl"):
+        os.chmod(root_path, stat.S_IRWXU)  # 0o700
+        for child in root_path.rglob("*"):
+            if child.is_dir():
+                os.chmod(child, stat.S_IRWXU)  # 0o700
+            else:
                 os.chmod(child, stat.S_IRUSR | stat.S_IWUSR)  # 0o600
     except OSError as exc:
-        logger.warning("permission_enforcement_failed", path=str(store_path), error=str(exc))
+        raise RuntimeError(
+            f"Cannot enforce file permissions on {root_path}. "
+            f"Run as the file owner or check mount options."
+        ) from exc
 
 
 def init_db(conn: sqlite3.Connection) -> None:
@@ -58,7 +65,7 @@ def get_connection(config) -> sqlite3.Connection:
     conn.execute("PRAGMA temp_store = MEMORY")
     conn.execute("PRAGMA mmap_size = 268435456")
     ensure_schema(conn)
-    _enforce_permissions(cfg.store_path)
+    _enforce_permissions(cfg.store_path.parent)
     return conn
 
 

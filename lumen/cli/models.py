@@ -26,7 +26,7 @@ class HuggingfaceUnavailableError(RuntimeError):
         super().__init__(message)
 
 
-def _export_via_optimum(repo_id: str, dest: Path) -> Path:
+def _export_via_optimum(repo_id: str, dest: Path, config=None) -> Path:
     """Use ``optimum-cli`` or Python API to export a model to ONNX.
 
     Args:
@@ -39,6 +39,8 @@ def _export_via_optimum(repo_id: str, dest: Path) -> Path:
     Raises:
         RuntimeError: If neither ``optimum-cli`` nor the Python API is available.
     """
+    if config is not None:
+        config.assert_sovereign("model_download_hf")
     dest.mkdir(parents=True, exist_ok=True)
 
     # Attempt 1: optimum-cli subprocess (fastest, handles caching)
@@ -90,7 +92,7 @@ def _export_via_optimum(repo_id: str, dest: Path) -> Path:
     raise RuntimeError(f"ONNX export succeeded but model.onnx not found in {dest}")
 
 
-def provision_embedding_model(model_name: str, dest: Path) -> Path:
+def provision_embedding_model(model_name: str, dest: Path, config=None) -> Path:
     """Ensure an ONNX embedding model exists at *dest*.
 
     Strategy:
@@ -102,8 +104,10 @@ def provision_embedding_model(model_name: str, dest: Path) -> Path:
     if onnx_path.exists():
         return onnx_path
 
+    if config is not None:
+        config.assert_sovereign("provision_embedding_model")
     repo_id = KNOWN_MODELS.get(model_name, model_name)
-    return _export_via_optimum(repo_id, model_dir)
+    return _export_via_optimum(repo_id, model_dir, config=config)
 
 
 model_app = typer.Typer(name="model", help="Model operations")
@@ -132,7 +136,7 @@ def model_download(
     dest.mkdir(parents=True, exist_ok=True)
 
     try:
-        path = provision_embedding_model(model_name, dest)
+        path = provision_embedding_model(model_name, dest, config=config)
     except RuntimeError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1) from exc
@@ -153,7 +157,7 @@ def model_export(
         output = config.model_path / repo_id.split("/")[-1]
 
     try:
-        path = _export_via_optimum(repo_id, output)
+        path = _export_via_optimum(repo_id, output, config=config)
     except RuntimeError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1) from exc

@@ -31,7 +31,7 @@
 Lumen is a **local-first memory store for LLM agents** — it organizes agent memories in a structured memory palace (rooms, loci, chunks) with hybrid retrieval, managed decay, and native integrations. It runs entirely on your hardware with no cloud dependencies.
 
 - **No cloud.** Embeddings run locally via ONNX Runtime. Storage is single-file SQLite.
-- **No daemons.** Single in-process runtime. Fits on a Raspberry Pi.
+- **Optional daemon.** Background scheduler auto-starts with `lumen serve`; can also run standalone with `lumen daemon start`.
 - **Hybrid retrieval.** BM25 (SQLite FTS5), cosine-similarity vector search, and optional graph traversal with reciprocal rank fusion.
 - **Managed memory lifecycle.** Three-layer forgetting: time-based decay, similarity interference, and budget eviction.
 - **Integrations.** LangGraph checkpoint saver, LangChain memory adapter, MCP server, FastAPI REST API.
@@ -167,7 +167,7 @@ All run with a single command from the repo root:
 | BEIR subset evaluation | `python -m benchmarks.beir.run` | Harness ready; no results yet |
 | All suites | `python -m benchmarks.run_all` | Wraps the above |
 
-> **Note on results:** Retrieval benchmarks currently use a synthetic keyword-overlap corpus (1,000 passages, 50 queries). nDCG scores in published results contain a known formula issue; we are fixing this and re-running. See [#issues](https://github.com/QuantumindSSI/lumen/issues).
+> **Note on results:** Retrieval benchmarks currently use a synthetic keyword-overlap corpus (1,000 passages, 50 queries). The nDCG formula was fixed in a recent commit; re-run `python -m benchmarks.retrieval.run` to generate updated scores.
 
 ---
 
@@ -223,9 +223,7 @@ We welcome contributions. The best way to start:
 ### High-impact areas to contribute
 
 - **Run the BEIR harness** — generate the first real-world retrieval benchmark results.
-- **Fix the nDCG formula** — the `_ndcg_at_k` function needs `(2.0**rel - 1)` instead of `(2.0 - 1)`.
 - **Add encryption-at-rest** — SQLCipher integration is the highest-priority security feature.
-- **Wire sovereign mode** — the config flag exists but enforcement needs to be added to embed/API paths.
 - **Write tests** — 28 modules lack dedicated test files. Pick one and add coverage.
 
 ### Development setup

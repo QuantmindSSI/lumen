@@ -135,7 +135,6 @@ embedding_model = "bge-small-en-v1.5"
 embedding_dims = 384
 vector_index = "sqlite-vec"
 enable_hnsw = false
-enable_kuzu = false
 consolidation_cpu_percent = 5
 scheduler_granularity = 300
 
@@ -144,7 +143,6 @@ scheduler_granularity = 300
 context_budget = 4096
 memory_limit_mb = 800
 vector_index = "usearch"
-enable_kuzu = true
 enable_frqad = true
 enable_local_llm = true
 
@@ -153,7 +151,6 @@ enable_local_llm = true
 context_budget = 4096
 memory_limit_mb = 1024
 vector_index = "usearch"
-enable_kuzu = true
 enable_frqad = true
 ```
 
@@ -284,7 +281,7 @@ recommendation='Use OS-level disk encryption (FileVault, BitLocker, LUKS) for pr
 
 ### 5.3 File Permissions
 
-File permissions are enforced automatically on startup. Ensure the Lumen process has permission to chmod:
+File permissions are enforced automatically on startup (fail-fast if the process cannot chmod). The entire `~/.lumen` tree is set to `700` for directories and `600` for files. Ensure the Lumen process owns the path:
 
 ```bash
 # Secure the Lumen home directory
@@ -453,9 +450,7 @@ sudo systemctl stop lumen
 source ~/.venvs/lumen/bin/activate
 pip install --upgrade lumen
 
-# 4. Run migrations
-lumen migrate
-
+# 4. Migrations run automatically on DB connect; nothing to do manually
 # 5. Restart
 sudo systemctl start lumen
 
@@ -485,7 +480,7 @@ sudo systemctl start lumen
 |---|---|---|
 | `sqlite3.OperationalError: database is locked` | WAL checkpoint stuck | `PRAGMA wal_checkpoint(TRUNCATE);` |
 | High RAM usage | USearch index loaded into RAM | Switch to `vector_index = "sqlite-vec"` |
-| Slow retrieval | No FTS5 index | Run `lumen palace rebuild` |
+| Slow retrieval | No FTS5 index | Ensure schema is initialized with `lumen init` |
 | `SovereignViolation` error | External API blocked | Set `LUMEN_SOVEREIGN=false` or use offline embedder |
 | SD card wear | Too many random writes | Enable WAL + `synchronous=NORMAL` |
 
@@ -493,16 +488,18 @@ sudo systemctl start lumen
 
 ```bash
 # Full system report
-lumen status --verbose
+lumen status
 
 # Check database integrity
 sqlite3 ~/.lumen/store/lumen.db "PRAGMA integrity_check;"
 
-# View recent errors
-lumen compliance audit --level error --last 1h
+# View recent audit events (last N entries)
+lumen compliance audit --n 10
 
-# Test retrieval latency
-lumen context assemble --benchmark --query "test query"
+# Test retrieval latency via the API
+curl -X POST http://localhost:8848/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "test query", "top_k": 5}'
 ```
 
 ---

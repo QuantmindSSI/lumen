@@ -61,9 +61,14 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
+# Clamp CORS to localhost origins when sovereign mode is enabled
+_allowed_origins = [o.strip() for o in _config.allowed_origins.split(",")]
+if _config.sovereign:
+    _allowed_origins = ["http://localhost", "http://localhost:8000", "http://localhost:8848"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in _config.allowed_origins.split(",")],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -242,8 +247,19 @@ async def lifespan(app: FastAPI):
         return
 
     _state.update(initialize_palace(_config))
+    # Start background forgetting scheduler so L1/L3 run without a separate daemon
+    try:
+        from lumen.sleep import SleepScheduler
+        scheduler = SleepScheduler(_config)
+        scheduler.start()
+        _state["scheduler"] = scheduler
+        logger.info("background_scheduler_started")
+    except Exception as exc:
+        logger.warning("background_scheduler_failed", error=str(exc))
     logger.info("server_started", device=_config.device, model_available=_state.get("embedding_model_available", False))
     yield
+    if "scheduler" in _state:
+        _state["scheduler"].stop()
     _state.get("conn", sqlite3).close()
     logger.info("server_stopped")
 
@@ -502,6 +518,29 @@ async def dashboard() -> str:
     raise HTTPException(status_code=404, detail="Dashboard HTML not found")
 
 
+def _load_retrieval_benchmarks() -> dict:
+    """Load benchmark JSON if it exists, otherwise return empty dict."""
+    import json as _json
+    from pathlib import Path
+
+    result_path = Path(__file__).parent.parent.parent / "benchmarks" / "retrieval" / "results" / "retrieval_results.json"
+    if not result_path.exists():
+        return {}
+    try:
+        data = _json.loads(result_path.read_text())
+        # Extract latest hybrid config results
+        for run in reversed(data.get("runs", [])):
+            if run.get("config", {}).get("hybrid", False):
+                return {
+                    "hybrid_r10_bge": run.get("recall_10"),
+                    "ndcg10": run.get("ndcg_10"),
+                    "latency_hybrid_ms": run.get("latency_ms"),
+                }
+        return {}
+    except Exception:
+        return {}
+
+
 @app.get("/dashboard-data")
 async def dashboard_data() -> dict:
     """Return dynamic data for the dashboard: room topology, memory health, TFC."""
@@ -543,6 +582,9 @@ async def dashboard_data() -> dict:
     }
     degradation_stage = stage_map.get(tfc.state.r, "FP32 (full)")
 
+    # Load benchmark results if available
+    retrieval = _load_retrieval_benchmarks()
+
     # Recent feedback stats
     feedback_stats = conn.execute(
         """
@@ -567,6 +609,7 @@ async def dashboard_data() -> dict:
             "total": feedback_stats["total_feedback"] or 0,
             "positive": feedback_stats["positive_feedback"] or 0,
         },
+        "retrieval": retrieval,
     }
 
 

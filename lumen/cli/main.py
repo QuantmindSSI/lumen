@@ -102,7 +102,7 @@ def init(
             from lumen.cli.models import provision_embedding_model
 
             try:
-                provision_embedding_model(config.embedding_model, config.model_path)
+                provision_embedding_model(config.embedding_model, config.model_path, config=config)
                 console.print(
                     f"[bold green]Model '{config.embedding_model}' downloaded.[/bold green]"
                 )

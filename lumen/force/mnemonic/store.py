@@ -63,15 +63,21 @@ def store_memory(
     is wired into bulk callers (consolidation, decay, eviction) where it
     provides real SD/eMMC endurance benefits.
     """
-    # Pre-store safety scan — redact PII at the write path
-    from lumen.compliance.safety_forgetting import safety_scan_chunk
+    # Pre-store safety scan — apply configured PII strategy at the write path
+    if config is None:
+        from lumen.config import LumenConfig
+        config = LumenConfig()
 
-    scan_hits = safety_scan_chunk(content)
-    if scan_hits:
-        logger.warning("safety_scan_triggered", room=room_name, hits=scan_hits)
-        # Redact the content but still store a metadata stub
-        for hit in scan_hits:
-            content = _redact_pattern(content, hit)
+    if config.pii_detection_enabled:
+        from lumen.compliance.safety_forgetting import apply_pii_strategy, safety_scan_chunk
+
+        scan_hits = safety_scan_chunk(content)
+        if scan_hits:
+            logger.warning("safety_scan_triggered", room=room_name, hits=scan_hits, mode=config.pii_redaction_mode)
+            content = apply_pii_strategy(content, scan_hits, config.pii_redaction_mode)
+            if content is None:
+                logger.warning("store_blocked_by_pii_policy", room=room_name, hits=scan_hits)
+                raise RuntimeError(f"Store blocked by PII policy: {scan_hits}")
 
     has_tenant = _tenant_id_supported(conn)
 
@@ -186,17 +192,4 @@ def _trigger_interference_check(conn, room_id, locus_id, new_chunk_id, embedding
         check_locus_interference(conn, room_id, locus_id, new_chunk_id, embedding)
 
 
-def _redact_pattern(text: str, pattern_name: str) -> str:
-    """Simple string-level redaction for known PII patterns."""
-    import re
 
-    patterns = {
-        "email": re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"),
-        "ssn": re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
-        "phone": re.compile(r"\b\d{3}-\d{3}-\d{4}\b"),
-        "api_key": re.compile(r"[a-zA-Z0-9_-]{32,}"),
-    }
-    rx = patterns.get(pattern_name)
-    if rx is None:
-        return text
-    return rx.sub(lambda m: "[REDACTED]", text)

@@ -29,6 +29,7 @@ def beam_config(tmp_path):
         vector_index="sqlite-vec",
         store_path=str(tmp_path / ".lumen"),
         beam_port=9999,
+        sovereign=False,
     )
 
 
