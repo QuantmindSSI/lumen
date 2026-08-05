@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lumen Memory Palace — Effectiveness Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4" crossorigin="anonymous"></script>
   <style>
     :root {
       --bg: #0b0f19;
@@ -500,7 +500,7 @@
     // ------------------------------------------------------------------
     async function fetchStatus() {
       try {
-        const res = await fetch('/status');
+        const res = await fetch('/v1/status');
         if (!res.ok) return;
         const data = await res.json();
         document.getElementById('activeChunks').textContent = data.active_chunks.toLocaleString();
@@ -525,7 +525,7 @@
 
     async function fetchDashboardData() {
       try {
-        const res = await fetch('/dashboard-data');
+        const res = await fetch('/v1/dashboard-data');
         if (!res.ok) return;
         const data = await res.json();
 
@@ -583,7 +583,7 @@
       const meta = document.getElementById('searchMeta');
       meta.textContent = '';
       try {
-        const res = await fetch('/search', {
+        const res = await fetch('/v1/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query: q, top_k: 5 })

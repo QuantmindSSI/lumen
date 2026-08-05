@@ -53,27 +53,27 @@ If custom tools are unavailable, use these bash commands in Devin:
 nohup lumen serve --host 0.0.0.0 --port 8848 > /tmp/lumen.log 2>&1 &
 
 # Search memories
-curl -s -X POST http://localhost:8848/search \
+curl -s -X POST http://localhost:8848/v1/search \
   -H "Content-Type: application/json" \
   -d '{"query":"database indexing decision","top_k":5}' | jq .
 
 # Store a memory
-curl -s -X POST http://localhost:8848/store \
+curl -s -X POST http://localhost:8848/v1/store \
   -H "Content-Type: application/json" \
   -d '{"content":"Use composite indexes on (user_id, created_at)","room":"decisions"}' | jq .
 
 # Assemble context for current task
-curl -s -X POST http://localhost:8848/assemble \
+curl -s -X POST http://localhost:8848/v1/assemble \
   -H "Content-Type: application/json" \
   -d '{"query":"implement retry logic","top_k":5}' | jq .
 
 # Log a full conversation turn
-curl -s -X POST http://localhost:8848/turn \
+curl -s -X POST http://localhost:8848/v1/turn \
   -H "Content-Type: application/json" \
   -d '{"user_msg":"Add retry logic","assistant_msg":"Added exponential backoff with jitter.","room":"conversations"}' | jq .
 
 # Check palace status
-curl -s http://localhost:8848/status | jq .
+curl -s http://localhost:8848/v1/status | jq .
 ```
 
 ## Option 3: Devin Docker Image (Advanced)

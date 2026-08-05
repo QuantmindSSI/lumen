@@ -1,4 +1,5 @@
 import sqlite3
+
 import pytest
 
 from lumen._init import initialize_palace

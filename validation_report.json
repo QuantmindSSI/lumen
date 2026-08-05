@@ -1,8 +1,8 @@
 {
   "validation_tool": "pydantic-ai (llama3.1:8b via Ollama) + codebase audit agent + full test suite",
-  "timestamp": "2026-08-04",
+  "timestamp": "2026-08-05",
   "project": "Lumen - Local-first agentic memory framework",
-  "version": "0.1.0-alpha",
+  "version": "0.2.0-beta",
   "license": "Apache 2.0",
   "metrics": {
     "python_files": 62,
@@ -120,13 +120,13 @@
       "severity": "MEDIUM",
       "category": "api_design",
       "file": "lumen/api/server.py",
-      "description": "API endpoints unversioned (/search, /store, etc.) with no /v1 prefix."
+      "description": "FIXED: API endpoints now use /v1/ prefix. Public paths (/health, /dashboard, /metrics) remain unversioned."
     },
     {
       "severity": "LOW",
       "category": "security",
       "file": "lumen/api/dashboard.html:7",
-      "description": "Chart.js loaded from CDN without Subresource Integrity hash."
+      "description": "FIXED: Chart.js now loaded with sha384 SRI hash and crossorigin=anonymous."
     },
     {
       "severity": "LOW",
@@ -143,12 +143,14 @@
   ],
 
   "pre_publication_checklist": [
-    {"item": "Commit the directory restructure and all fixes", "status": "PENDING"},
-    {"item": "Ensure CI workflow passes on push (73% coverage threshold)", "status": "PENDING"},
-    {"item": "Add /v1/ API prefix before tagging v0.1.0", "status": "PENDING"},
-    {"item": "Bundle chart.js locally or add SRI hash to dashboard.html", "status": "PENDING"},
-    {"item": "Verify README.md, SECURITY.md, ROADMAP.md reflect encryption-at-rest removal", "status": "PENDING"},
-    {"item": "Run `ruff check` and `mypy` before tagging", "status": "PENDING"},
-    {"item": "Tag a v0.1.0-alpha release", "status": "READY_AFTER_ABOVE"}
+    {"item": "Commit the directory restructure and all fixes", "status": "COMPLETED"},
+    {"item": "Ensure CI workflow passes on push (73% coverage threshold)", "status": "COMPLETED"},
+    {"item": "Add /v1/ API prefix before tagging v0.2.0", "status": "COMPLETED"},
+    {"item": "Bundle chart.js locally or add SRI hash to dashboard.html", "status": "COMPLETED"},
+    {"item": "Verify README.md, SECURITY.md, ROADMAP.md reflect encryption-at-rest removal", "status": "COMPLETED"},
+    {"item": "Run `ruff check` and `mypy` before tagging", "status": "COMPLETED"},
+    {"item": "Run benchmarks (optical, TFC, stress) before tagging", "status": "COMPLETED"},
+    {"item": "Generate PGP key for security@lumen.ai", "status": "COMPLETED"},
+    {"item": "Tag a v0.2.0-beta release", "status": "READY_FOR_TAG"}
   ]
 }

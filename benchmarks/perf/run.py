@@ -31,7 +31,7 @@ except Exception:
     _HAS_PSUTIL = False
 
 try:
-    import lumen
+    import lumen  # noqa: F401
 except ImportError as exc:
     print(f"[ERROR] Cannot import lumen: {exc}")
     sys.exit(1)

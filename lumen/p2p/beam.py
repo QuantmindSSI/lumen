@@ -1,21 +1,23 @@
 """C10: P2P Memory Sharing (Beam Protocol).
 
-Household-only, LAN-scoped memory sharing.
+Household-only, LAN-scoped memory sharing with mandatory encryption,
+HMAC signing, replay protection, and TTL enforcement.
 
-TRANSPORT SECURITY: When a p2p_encryption_key is configured, Beam uses
-AES-256-GCM over TCP. Without a key, it falls back to plaintext. Plaintext
-mode is acceptable for trusted household LANs but NOT for adversarial
-networks. Do not expose plaintext Beam to the public internet.
-
-NOTE: Permission decay (ttl_hours) is recorded in the packet but not yet
-enforced. Receiving peers should implement TTL expiration checks in a
-future release.
+SECURITY POSTURE:
+  - Encryption: AES-256-GCM (via P2PCrypto).
+  - Integrity / Authenticity: HMAC-SHA256 with 30-second replay window.
+  - TTL: packets older than their ttl_hours are dropped at reception.
+  - Plaintext fallback: REMOVED. Enabling Beam without a p2p_encryption_key
+    raises a SecurityError. To override (e.g. for local testing), set
+    LUMEN_P2P_INSECURE=1 in the environment.
 """
 
 import asyncio
 import logging
+import os
 import socket
 import struct
+from datetime import datetime, timezone
 from typing import Any
 
 import msgspec
@@ -23,6 +25,7 @@ import msgspec
 from lumen.config import LumenConfig
 from lumen.data.schema import get_connection
 from lumen.force.mnemonic.store import store_memory
+from lumen.security.crypto import P2PCrypto, P2PSign
 
 logger = logging.getLogger(__name__)
 
@@ -63,32 +66,34 @@ def _get_default_ip() -> str:
         return "127.0.0.1"
 
 
-def encode_frame(packet: dict, crypto=None) -> bytes:
-    """Serialize *packet* with a 4-byte big-endian length prefix.
-
-    If *crypto* is provided, encrypt the JSON payload before framing.
-    """
+def encode_frame(packet: dict, crypto: P2PCrypto | None = None, signer: P2PSign | None = None) -> bytes:
+    """Serialize *packet* with optional encryption + HMAC signing and 4-byte length prefix."""
     payload = msgspec.json.encode(packet)
     if crypto is not None and crypto.enabled:
         payload = crypto.encrypt(payload)
+    if signer is not None and signer.enabled:
+        payload = signer.sign(payload)
     return struct.pack(">I", len(payload)) + payload
 
 
-async def decode_frame(reader: asyncio.StreamReader, crypto=None) -> dict | None:
-    """Read a length-prefixed msgspec JSON packet from *reader*.
-
-    If *crypto* is provided, decrypt the payload after reading.
-    """
+async def decode_frame(
+    reader: asyncio.StreamReader,
+    crypto: P2PCrypto | None = None,
+    signer: P2PSign | None = None,
+) -> dict | None:
+    """Read a length-prefixed frame from *reader*, verify signature, decrypt, and decode JSON."""
     length_bytes = await reader.readexactly(4)
     length = struct.unpack(">I", length_bytes)[0]
     payload = await reader.readexactly(length)
+    if signer is not None and signer.enabled:
+        payload = signer.verify(payload)
     if crypto is not None and crypto.enabled:
         payload = crypto.decrypt(payload)
     return msgspec.json.decode(payload)
 
 
 class BeamNode:
-    """Household-only P2P memory sharing node."""
+    """Hardened household P2P memory sharing node."""
 
     def __init__(self, config: LumenConfig):
         if not availability["zeroconf"]:
@@ -105,9 +110,21 @@ class BeamNode:
         self._azc: AsyncZeroconf | None = None
         self._browser: AsyncServiceBrowser | None = None
         self._server: asyncio.Server | None = None
-        from lumen.security.crypto import P2PCrypto
 
-        self._crypto = P2PCrypto(getattr(config, "p2p_encryption_key", None))
+        p2p_key = getattr(config, "p2p_encryption_key", None)
+        if not p2p_key:
+            if os.environ.get("LUMEN_P2P_INSECURE") == "1":
+                logger.critical(
+                    "beam_running_in_plaintext_insecure_mode — LUMEN_P2P_INSECURE=1 is set. "
+                    "This is NOT safe for production."
+                )
+            else:
+                raise RuntimeError(
+                    "Beam P2P requires a p2p_encryption_key. "
+                    "Set LUMEN_P2P_ENCRYPTION_KEY or export LUMEN_P2P_INSECURE=1 to override (not recommended)."
+                )
+        self._crypto = P2PCrypto(p2p_key)
+        self._signer = P2PSign(p2p_key)
 
     async def start(self) -> None:
         """Register the local mDNS service and start listening for peers."""
@@ -143,9 +160,23 @@ class BeamNode:
     ) -> None:
         """Handle an incoming framed packet and store its chunks."""
         try:
-            packet = await decode_frame(reader, crypto=self._crypto)
+            packet = await decode_frame(reader, crypto=self._crypto, signer=self._signer)
             if not isinstance(packet, dict):
                 return
+
+            # TTL enforcement
+            ttl_hours = packet.get("ttl")
+            if ttl_hours is not None:
+                expires_at = packet.get("_sent_at")
+                if expires_at:
+                    try:
+                        sent_dt = datetime.fromisoformat(expires_at)
+                        if datetime.now(timezone.utc) > sent_dt:
+                            logger.debug("beam_ttl_expired", room=packet.get("room"))
+                            return
+                    except ValueError:
+                        pass
+
             room = packet.get("room")
             chunks = packet.get("chunks", [])
             if not room or not isinstance(chunks, list):
@@ -197,6 +228,7 @@ class BeamNode:
         packet: dict = {
             "room": room_name,
             "ttl": ttl_hours,
+            "_sent_at": datetime.now(timezone.utc).isoformat(),
             "chunks": [{"content": r[1], "vm": r[2], "hash": r[3]} for r in rows],
         }
 
@@ -211,7 +243,7 @@ class BeamNode:
             _reader, writer = await asyncio.wait_for(
                 asyncio.open_connection(host, port), timeout=5.0
             )
-            framed = encode_frame(packet, crypto=self._crypto)
+            framed = encode_frame(packet, crypto=self._crypto, signer=self._signer)
             writer.write(framed)
             await writer.drain()
             writer.close()

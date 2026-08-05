@@ -56,6 +56,8 @@ dependencies = [
     # Model download
     "huggingface-hub>=0.20",
     "cryptography>=42.0",
+    # Encryption-at-rest (SQLCipher)
+    "sqlcipher3>=0.6 ; platform_machine == 'x86_64' or platform_machine == 'aarch64'",
 ]
 
 [project.optional-dependencies]
@@ -95,6 +97,9 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP", "B", "C4", "SIM"]
 ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"benchmarks/**/*.py" = ["E402"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

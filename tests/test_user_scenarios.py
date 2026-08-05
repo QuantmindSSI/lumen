@@ -11,6 +11,8 @@ import pytest
 
 from lumen.compliance.safety_forgetting import safety_forget_chunk, safety_scan_chunk
 from lumen.config import LumenConfig
+from lumen.controller import TFCState, TwinForceController
+from lumen.curiosity import curiosity_probe
 from lumen.data.schema import get_connection
 from lumen.force.contextual.assembly import assemble_context
 from lumen.force.contextual.embed import FallbackEmbedder
@@ -19,8 +21,6 @@ from lumen.force.mnemonic.forgetting_l1_decay import ebbinghaus_decay
 from lumen.force.mnemonic.retrieval_temporal import temporal_point_query
 from lumen.force.mnemonic.store import store_memory
 from lumen.force.mnemonic.value_model import compute_vm
-from lumen.controller import TFCState, TwinForceController
-from lumen.curiosity import curiosity_probe
 from lumen.fusion import RetrievedChunk
 from lumen.search import SearchPipeline
 from lumen.sovereign.optical import quantize_vector

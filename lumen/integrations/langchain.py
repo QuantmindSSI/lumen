@@ -21,8 +21,8 @@ from collections.abc import Iterator, Sequence
 from typing import Any
 
 from lumen.config import LumenConfig
-from lumen.logging import get_console_logger
 from lumen.conversation import ConversationMemory
+from lumen.logging import get_console_logger
 
 logger = get_console_logger(__name__)
 

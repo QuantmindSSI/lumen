@@ -81,9 +81,23 @@ def _query_throughput(conn: sqlite3.Connection, config: LumenConfig, embedder, q
 
 
 def _trigger_l3_eviction(conn: sqlite3.Connection, config: LumenConfig):
-    # Artificially lower the memory limit to force eviction
-    print("  Triggering L3 eviction with artificial low limit...")
-    evicted = budget_curated_eviction(conn, config, target_ram_mb=1.0)
+    """Trigger L3 eviction by lowering the memory limit so chunk count exceeds 85%% threshold."""
+    # After ingestion we know the chunk count. Compute a limit that forces eviction.
+    row = conn.execute("SELECT COUNT(*) FROM chunk WHERE valid_to IS NULL").fetchone()
+    active_chunks = row[0] if row else 0
+    # estimated_mb = active_chunks * 1800 / (1024*1024)
+    # target_ram_mb = memory_limit_mb * 0.85
+    # Solve for memory_limit_mb where estimated_mb == target_ram_mb
+    estimated_mb = (active_chunks * 1800) / (1024 * 1024)
+    forced_limit_mb = max(16, int(estimated_mb / 0.85 * 0.5))  # 50%% of the 85%% threshold
+    print(f"  Triggering L3 eviction (chunks={active_chunks}, est_mb={estimated_mb:.1f}, forced_limit={forced_limit_mb}MB)...")
+    # Temporarily override config.memory_limit_mb
+    original_limit = config.memory_limit_mb
+    config.memory_limit_mb = forced_limit_mb
+    try:
+        evicted = budget_curated_eviction(conn, config)
+    finally:
+        config.memory_limit_mb = original_limit
     print(f"  L3 evicted {evicted} chunks")
     return evicted
 

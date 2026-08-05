@@ -67,3 +67,13 @@ def get_goal_embeddings(conn: sqlite3.Connection, user_id: str = "default") -> n
     if row and row[0]:
         return np.frombuffer(row[0], dtype=np.float32)
     return None
+
+
+def update_vm_weights(conn: sqlite3.Connection, user_id: str, weights: dict) -> None:
+    weights_json = json.dumps(weights)
+    conn.execute(
+        """INSERT INTO user_profile(user_id, vm_weights_json)
+           VALUES (?, ?)
+           ON CONFLICT(user_id) DO UPDATE SET vm_weights_json=excluded.vm_weights_json""",
+        (user_id, weights_json),
+    )

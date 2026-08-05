@@ -1,6 +1,6 @@
 # Lumen Production Deployment Guide
 
-**Version:** v0.1.0-alpha  
+**Version:** v0.2.0-beta  
 **Platforms:** Raspberry Pi 5, Jetson Orin Nano, Generic x86_64, ARM64 SBCs
 
 ---
@@ -191,7 +191,7 @@ EOF
 
 ```bash
 # Default status
-curl http://localhost:8848/status
+curl http://localhost:8848/v1/status
 
 # Expected response:
 # {"rooms": 12, "active_chunks": 2341, "tfc": {"e": 0.62, "a": 0.44, "tau": 7.0, "r": 3}, "embedding_model_available": true}
@@ -245,7 +245,7 @@ export LUMEN_API_KEY="$LUMEN_API_KEY"
 
 **Authenticated request:**
 ```bash
-curl -H "X-API-Key: $LUMEN_API_KEY" http://localhost:8848/search \
+curl -H "X-API-Key: $LUMEN_API_KEY" http://localhost:8848/v1/search \
   -H "Content-Type: application/json" \
   -d '{"query": "sovereign AI memory", "top_k": 5}'
 ```
@@ -254,7 +254,7 @@ curl -H "X-API-Key: $LUMEN_API_KEY" http://localhost:8848/search \
 ```bash
 curl -H "X-API-Key: $LUMEN_API_KEY" \
   -H "X-Tenant-ID: customer-acme" \
-  http://localhost:8848/status
+  http://localhost:8848/v1/status
 ```
 
 > **Warning:** When `LUMEN_API_KEY` is unset, the API is open. Always set it before exposing Lumen to any network.
@@ -495,7 +495,7 @@ sqlite3 ~/.lumen/store/lumen.db "PRAGMA integrity_check;"
 lumen compliance audit --n 10
 
 # Test retrieval latency via the API
-curl -X POST http://localhost:8848/search \
+curl -X POST http://localhost:8848/v1/search \
   -H "Content-Type: application/json" \
   -d '{"query": "test query", "top_k": 5}'
 ```

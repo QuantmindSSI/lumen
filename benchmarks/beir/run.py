@@ -41,9 +41,11 @@ SEEDS = [42, 123, 456]
 EMBEDDER_MODELS = ["BAAI/bge-small-en-v1.5"]
 TOP_K_VALUES = [1, 3, 5, 10, 20]
 N_BOOTSTRAP = 1_000
-NUM_PASSAGES = 2_000
-NUM_QUERIES = 30
 EMBED_DIMS = 384
+
+# Defaults for CLI override (None = full corpus)
+NUM_PASSAGES: int | None = None
+NUM_QUERIES: int | None = None
 
 BEIR_DATASETS = [
     ("nfcorpus", "BeIR/nfcorpus"),
@@ -97,90 +99,90 @@ def _get_embedder(model_name: str):
 # Dataset loaders
 # ---------------------------------------------------------------------------
 
-def _load_beir_dataset(name: str, path: str):
+def _load_beir_dataset(name: str, path: str, max_passages: int | None = None, max_queries: int | None = None):
     """Load a BEIR dataset via the datasets library.
 
     Loads qrels first to identify queries with relevance judgments, then fetches
     queries and corpus matching those judgments, avoiding the streaming-ordering
     mismatch where the first N queries may have zero relevant documents.
     """
-    try:
-        from datasets import load_dataset
+    from datasets import load_dataset
 
-        print(f"  Loading {name} ...")
-        corpus_ds = load_dataset(path, "corpus", split="corpus", streaming=True)
-        queries_ds = load_dataset(path, "queries", split="queries", streaming=True)
-        qrels_ds = load_dataset(f"{path}-qrels", split="test", streaming=True)
+    print(f"  Loading {name} ...")
+    corpus_ds = load_dataset(path, "corpus", split="corpus", streaming=True)
+    queries_ds = load_dataset(path, "queries", split="queries", streaming=True)
+    qrels_ds = load_dataset(f"{path}-qrels", split="test", streaming=True)
 
-        # Collect corpus first (needed to scope qrels to loaded docs)
-        corpus: dict[str, str] = {}
-        for i, doc in enumerate(corpus_ds):
-            if i >= NUM_PASSAGES:
+    # Collect corpus first (needed to scope qrels to loaded docs)
+    corpus: dict[str, str] = {}
+    for i, doc in enumerate(corpus_ds):
+        if max_passages is not None and i >= max_passages:
+            break
+        doc_id = str(doc.get("_id", str(i)))
+        title = doc.get("title", "") or ""
+        text = doc.get("text", "") or ""
+        corpus[doc_id] = f"{title} {text}".strip()
+
+    max_q = max_queries if max_queries is not None else 10_000
+
+    # Load qrels first to identify which query IDs have judgments
+    qrels_raw: dict[str, dict[str, int]] = {}
+    for row in qrels_ds:
+        qid = str(row.get("query-id", row.get("_id", "")))
+        doc_id = str(row.get("corpus-id", ""))
+        score = int(row.get("score", 1))
+        if doc_id in corpus:
+            qrels_raw.setdefault(qid, {})[doc_id] = score
+        if max_queries is not None and len(qrels_raw) >= max_q:
+            break
+
+    # Load queries that match qrel IDs
+    queries: dict[str, str] = {}
+    min_queries_fallback = min(max_q // 2, 25) if max_q else 25
+    for q in queries_ds:
+        qid = str(q.get("_id", str(len(queries))))
+        if qid in qrels_raw or len(queries) < min_queries_fallback:
+            qtext = q.get("text", "") or q.get("title", "") or ""
+            queries[qid] = qtext.strip()
+        if len(queries) >= max_q:
+            break
+
+    # Filter qrels to queries we have and build ordered lists
+    corpus_ids = list(corpus.keys())
+    docs = [corpus[cid] for cid in corpus_ids]
+    id_map = {cid: idx for idx, cid in enumerate(corpus_ids)}
+
+    query_list = []
+    query_texts = []
+    query_relevant = []
+    for qid, qtext in queries.items():
+        rel = {}
+        for doc_id, score in qrels_raw.get(qid, {}).items():
+            if doc_id in id_map:
+                rel[id_map[doc_id]] = score
+        if rel:
+            query_list.append(qid)
+            query_texts.append(qtext)
+            query_relevant.append(rel)
+            if max_queries is not None and len(query_list) >= max_q:
                 break
-            doc_id = str(doc.get("_id", str(i)))
-            title = doc.get("title", "") or ""
-            text = doc.get("text", "") or ""
-            corpus[doc_id] = f"{title} {text}".strip()
 
-        # Load qrels first to identify which query IDs have judgments
-        qrels_raw: dict[str, dict[str, int]] = {}
-        for row in qrels_ds:
-            qid = str(row.get("query-id", row.get("_id", "")))
-            doc_id = str(row.get("corpus-id", ""))
-            score = int(row.get("score", 1))
-            if doc_id in corpus:
-                qrels_raw.setdefault(qid, {})[doc_id] = score
-            if len(qrels_raw) >= NUM_QUERIES:
-                break
+    # If not enough queries with qrels, pad with unjudged queries
+    for qid, qtext in queries.items():
+        if len(query_list) >= max_q:
+            break
+        if qid not in query_list:
+            query_list.append(qid)
+            query_texts.append(qtext)
+            query_relevant.append({})
 
-        # Load queries that match qrel IDs
-        queries: dict[str, str] = {}
-        for q in queries_ds:
-            qid = str(q.get("_id", str(len(queries))))
-            if qid in qrels_raw or len(queries) < min(NUM_QUERIES // 2, 25):
-                qtext = q.get("text", "") or q.get("title", "") or ""
-                queries[qid] = qtext.strip()
-            if len(queries) >= NUM_QUERIES:
-                break
+    if len(docs) >= 100 and len(query_texts) >= 10:
+        n_rel = sum(len(r) for r in query_relevant)
+        valid_q = sum(1 for r in query_relevant if r)
+        print(f"  {name}: {len(docs)} docs, {len(query_texts)} queries "
+              f"({valid_q} with judgments), {n_rel} relevant pairs")
+        return docs, query_texts, query_relevant, name
 
-        # Filter qrels to queries we have and build ordered lists
-        corpus_ids = list(corpus.keys())
-        docs = [corpus[cid] for cid in corpus_ids]
-        id_map = {cid: idx for idx, cid in enumerate(corpus_ids)}
-
-        query_list = []
-        query_texts = []
-        query_relevant = []
-        for qid, qtext in queries.items():
-            rel = {}
-            for doc_id, score in qrels_raw.get(qid, {}).items():
-                if doc_id in id_map:
-                    rel[id_map[doc_id]] = score
-            if rel:
-                query_list.append(qid)
-                query_texts.append(qtext)
-                query_relevant.append(rel)
-                if len(query_list) >= NUM_QUERIES:
-                    break
-
-        # If not enough queries with qrels, pad with unjudged queries
-        for qid, qtext in queries.items():
-            if len(query_list) >= NUM_QUERIES:
-                break
-            if qid not in query_list:
-                query_list.append(qid)
-                query_texts.append(qtext)
-                query_relevant.append({})
-
-        if len(docs) >= 100 and len(query_texts) >= 10:
-            n_rel = sum(len(r) for r in query_relevant)
-            valid_q = sum(1 for r in query_relevant if r)
-            print(f"  {name}: {len(docs)} docs, {len(query_texts)} queries "
-                  f"({valid_q} with judgments), {n_rel} relevant pairs")
-            return docs, query_texts, query_relevant, name
-
-    except Exception as exc:
-        print(f"  {name}: failed ({exc})")
     return None
 
 
@@ -223,7 +225,7 @@ def _compute_metrics(retrieved_lists, relevant_sets, k_values):
             rel_dicts.append(rel)
         else:
             rel_sets.append(rel)
-            rel_dicts.append({cid: 1 for cid in rel})
+            rel_dicts.append(dict.fromkeys(rel, 1))
 
     metrics = {}
     for k in k_values:
@@ -237,7 +239,14 @@ def _compute_metrics(retrieved_lists, relevant_sets, k_values):
 def _recall_at_k(retrieved, relevant, k):
     if not relevant:
         return 0.0
-    return len(set(retrieved[:k]) & set(relevant)) / len(relevant)
+    # Defensive: flatten if any nested collections leaked in
+    flat = []
+    for item in retrieved[:k]:
+        if isinstance(item, (list, set, tuple)):
+            flat.extend(item)
+        else:
+            flat.append(item)
+    return len(set(flat) & set(relevant)) / len(relevant)
 
 
 def _ndcg_at_k(retrieved, relevant, k):
@@ -353,11 +362,11 @@ def run_single(seed, docs, query_texts, query_relevant_pids, dataset_name, embed
 # Main benchmark runner
 # ---------------------------------------------------------------------------
 
-def run_beir_benchmark():
+def run_beir_benchmark(max_passages: int | None = None, max_queries: int | None = None):
     all_dataset_results = []
 
     for name, path in BEIR_DATASETS:
-        data = _load_beir_dataset(name, path)
+        data = _load_beir_dataset(name, path, max_passages=max_passages, max_queries=max_queries)
         if data is None:
             print(f"  Skipping {name} (load failed)")
             continue
@@ -378,7 +387,7 @@ def run_beir_benchmark():
 
             # Baseline
             bm25_retrieved = _bm25_baseline(docs, query_texts, query_relevant_pids)
-            bm25_metrics = _compute_metrics(bm25_retrieved, [{pid for pid in rel} for rel in query_relevant_pids], TOP_K_VALUES)
+            bm25_metrics = _compute_metrics(bm25_retrieved, [set(rel) for rel in query_relevant_pids], TOP_K_VALUES)
 
             def _summarize(metrics_dict):
                 summary = {}
@@ -419,8 +428,8 @@ def run_beir_benchmark():
     report = {
         "benchmark": "beir",
         "datasets": [r["dataset"] for r in all_dataset_results],
-        "num_passages": NUM_PASSAGES,
-        "num_queries": NUM_QUERIES,
+        "num_passages": max_passages,
+        "num_queries": max_queries,
         "seeds": SEEDS,
         "bootstrap_samples": N_BOOTSTRAP,
         "results": all_dataset_results,
@@ -432,7 +441,7 @@ def run_beir_benchmark():
     md_lines = [
         "# BEIR Benchmark Results",
         "",
-        f"**Datasets:** {', '.join(report['datasets'])} | **Passages:** {NUM_PASSAGES} | **Queries:** {NUM_QUERIES}",
+        f"**Datasets:** {', '.join(report['datasets'])} | **Passages:** {max_passages or 'full'} | **Queries:** {max_queries or 'full'}",
         f"**Seeds:** {len(SEEDS)} | **Bootstrap:** {N_BOOTSTRAP} samples",
         "",
     ]
@@ -464,7 +473,8 @@ def run_beir_benchmark():
             b = er["results"].get("bm25", {}).get("recall_10", {}).get("mean", "-")
             d = er["results"].get("dense", {}).get("recall_10", {}).get("mean", "-")
             h = er["results"].get("hybrid", {}).get("recall_10", {}).get("mean", "-")
-            fmt = lambda x: f"{x:.4f}" if isinstance(x, float) else str(x)
+            def fmt(x):
+                return f"{x:.4f}" if isinstance(x, float) else str(x)
             print(f"| {ds} | {emb} | {fmt(rb)} | {fmt(b)} | {fmt(d)} | {fmt(h)} |")
 
     print(f"\n[INFO] Results written to {json_path} and {md_path}")
@@ -494,4 +504,16 @@ def _append_config_table(lines, name, metrics_data):
 
 
 if __name__ == "__main__":
-    run_beir_benchmark()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Lumen BEIR benchmark harness")
+    parser.add_argument("--max-passages", type=int, default=None, help="Cap corpus size per dataset (default: full)")
+    parser.add_argument("--max-queries", type=int, default=None, help="Cap query count per dataset (default: full)")
+    parser.add_argument("--output", type=str, default=None, help="Override output JSON path")
+    args = parser.parse_args()
+
+    report = run_beir_benchmark(max_passages=args.max_passages, max_queries=args.max_queries)
+    if args.output:
+        import json as _json
+        Path(args.output).write_text(_json.dumps(report, indent=2), encoding="utf-8")
+        print(f"[INFO] Results also written to {args.output}")

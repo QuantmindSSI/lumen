@@ -12,10 +12,10 @@ from jinja2 import BaseLoader, Environment
 
 from lumen.brand.errors import BudgetExceededError
 from lumen.config import LumenConfig
-from lumen.force.contextual.token_budget import get_token_counter
-from lumen.logging import get_console_logger
 from lumen.controller import TFCState
+from lumen.force.contextual.token_budget import get_token_counter
 from lumen.fusion import RetrievedChunk
+from lumen.logging import get_console_logger
 
 ASSEMBLY_TEMPLATE_STRING = """{{ system }}
 

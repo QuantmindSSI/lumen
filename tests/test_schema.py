@@ -1,10 +1,9 @@
 import sqlite3
-from pathlib import Path
 
 import pytest
 
 from lumen.config import LumenConfig
-from lumen.data.schema import get_connection, ensure_schema, init_db
+from lumen.data.schema import ensure_schema, get_connection, init_db
 
 
 @pytest.fixture

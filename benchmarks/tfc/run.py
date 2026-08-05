@@ -23,7 +23,6 @@ from lumen.config import LumenConfig
 from lumen.controller import TwinForceController
 from lumen.data.schema import get_connection
 from lumen.force.mnemonic.retrieval_dense import VectorChannel
-from lumen.force.mnemonic.retrieval_lexical import LexicalChannel
 from lumen.force.mnemonic.store import store_memory
 from lumen.search import SearchPipeline
 
@@ -63,7 +62,7 @@ def _generate_corpus_and_queries(rng: np.random.Generator, n_passages: int, n_qu
 
 def _compute_recall(retrieved_lists: list[list[int]], query_relevant: list[dict[int, float]], k: int):
     recalls = []
-    for retrieved, rel in zip(retrieved_lists, query_relevant):
+    for retrieved, rel in zip(retrieved_lists, query_relevant, strict=False):
         hits = len(set(retrieved[:k]) & set(rel.keys()))
         recalls.append(hits / max(1, len(rel)))
     return float(np.mean(recalls))
@@ -72,7 +71,7 @@ def _compute_recall(retrieved_lists: list[list[int]], query_relevant: list[dict[
 def run_single_config(e: float, a: float, tau: float, r: int, texts: list[str], embeddings: np.ndarray, query_embs: list[np.ndarray], query_relevant: list[dict[int, float]]):
     config = LumenConfig(embedding_dims=EMBED_DIMS, vector_index="sqlite-vec")
     tmpdir = tempfile.mkdtemp(prefix="lumen_tfc_")
-    config.store_path = Path(tmpdir)
+    config.store_path = Path(tmpdir) / "store"
 
     conn = get_connection(config)
 
@@ -81,7 +80,7 @@ def run_single_config(e: float, a: float, tau: float, r: int, texts: list[str], 
     config.tfc_default_resolution = r
 
     pid_to_chunk_id = {}
-    for pid, (text, emb) in enumerate(zip(texts, embeddings)):
+    for pid, (text, emb) in enumerate(zip(texts, embeddings, strict=False)):
         chunk_id = store_memory(
             conn,
             content=text,
@@ -95,7 +94,7 @@ def run_single_config(e: float, a: float, tau: float, r: int, texts: list[str], 
     conn.commit()
 
     # Build embedder that returns query vectors by pattern match
-    query_emb_map = {i: q for i, q in enumerate(query_embs)}
+    query_emb_map = dict(enumerate(query_embs))
     class _BenchEmbedder:
         def encode_single(self, text: str) -> np.ndarray:
             if text.startswith("benchmark query"):
@@ -114,11 +113,11 @@ def run_single_config(e: float, a: float, tau: float, r: int, texts: list[str], 
     tfc.state.r = r
 
     pipeline = SearchPipeline(conn, config, embedder=embedder, tfc=tfc)
-    vector = VectorChannel(config, conn)
+    VectorChannel(config, conn)
 
     retrieved_lists = []
     latencies = []
-    for i, q in enumerate(query_embs):
+    for i, _q in enumerate(query_embs):
         t0 = time.perf_counter()
         results = [r.chunk_id for r in pipeline.execute(f"benchmark query_{i}", k=50, max_repair_attempts=0)]
         latencies.append((time.perf_counter() - t0) * 1000)

@@ -1,8 +1,12 @@
 """A10: Budget-Curated Forgetting (L3).
 
-Input wire: SQLite schema, psutil (for RAM), config.memory_limit_mb
+Input wire: SQLite schema, config.memory_limit_mb
 Output wire: A12 (optical degradation / release scheduler), D10 (actual vector mutation)
 Secret sauce: Net-value-per-byte eviction
+
+NOTE: Trigger uses chunk-count estimation rather than raw process RSS,
+because RSS includes Python heap, embedding models, and ONNX runtime
+overhead that are irrelevant to Lumen's data footprint.
 """
 
 import contextlib
@@ -10,16 +14,11 @@ import sqlite3
 
 from lumen.sovereign.wear import WearAwareBatcher
 
-try:
-    import psutil
-
-    _HAS_PSUTIL = True
-except Exception:
-    _HAS_PSUTIL = False
-
 from lumen.logging import get_console_logger
 
 logger = get_console_logger(__name__)
+
+_BYTES_PER_CHUNK_ESTIMATE = 1800
 
 
 def budget_curated_eviction(
@@ -29,26 +28,23 @@ def budget_curated_eviction(
     batcher: WearAwareBatcher | None = None,
 ):
     """
-    When resident memory footprint exceeds trigger, evict lowest V(m)/byte candidates.
+    When estimated data-memory footprint exceeds trigger, evict lowest V(m)/byte candidates.
     Eviction = optical degradation (FP32→FP16→INT8→BINARY→RELEASED).
     """
     memory_limit_mb = getattr(config, "memory_limit_mb", 512)
     if target_ram_mb is None:
         target_ram_mb = memory_limit_mb * 0.85
 
-    rss_mb = 0.0
-    if _HAS_PSUTIL:
-        try:
-            proc = psutil.Process()
-            rss_mb = proc.memory_info().rss / (1024 * 1024)
-        except Exception as exc:
-            logger.debug("psutil_rss_failed", error=str(exc))
+    # Chunk-count proxy for data-memory footprint (deterministic, testable, excludes interpreter overhead)
+    row = conn.execute("SELECT COUNT(*) FROM chunk WHERE valid_to IS NULL").fetchone()
+    active_chunks = row[0] if row else 0
+    estimated_mb = (active_chunks * _BYTES_PER_CHUNK_ESTIMATE) / (1024 * 1024)
 
-    if rss_mb < target_ram_mb:
+    if estimated_mb < target_ram_mb:
         return 0
 
-    needed_eviction_mb = rss_mb - (memory_limit_mb * 0.75)
-    bytes_per_chunk = 1800
+    needed_eviction_mb = estimated_mb - (memory_limit_mb * 0.75)
+    bytes_per_chunk = _BYTES_PER_CHUNK_ESTIMATE
     chunks_to_evict = max(1, int((needed_eviction_mb * 1024 * 1024) / bytes_per_chunk))
 
     rows = conn.execute(
@@ -113,10 +109,13 @@ def budget_curated_eviction(
                 logger.debug("budget_evict_vec_delete", chunk_id=chunk_id, error=str(exc))
             evicted += 1
 
+    if not batcher:
+        conn.commit()
     logger.info(
             "budget_eviction",
             evicted=evicted,
-            triggered_at_mb=round(rss_mb, 1),
+            estimated_mb=round(estimated_mb, 1),
+            active_chunks=active_chunks,
             target_mb=target_ram_mb,
         )
     return evicted

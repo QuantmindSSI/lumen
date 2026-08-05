@@ -66,7 +66,7 @@ def _generate_queries(rng: np.random.Generator, corpus_embeddings: np.ndarray, n
 def _compute_metrics(retrieved_lists: list[list[int]], query_relevant: list[dict[int, float]], k_values: list[int]):
     metrics = {f"recall@{k}": [] for k in k_values}
     metrics.update({f"ndcg@{k}": [] for k in k_values})
-    for retrieved, rel in zip(retrieved_lists, query_relevant):
+    for retrieved, rel in zip(retrieved_lists, query_relevant, strict=False):
         rel_set = set(rel.keys())
         for k in k_values:
             topk = retrieved[:k]
@@ -84,7 +84,7 @@ def run_degradation_level(level: str, docs: list[str], corpus_embeddings: np.nda
     """Run retrieval benchmark at a specific quantization level."""
     config = LumenConfig(embedding_dims=EMBED_DIMS, vector_index="sqlite-vec")
     tmpdir = tempfile.mkdtemp(prefix="lumen_optical_")
-    config.store_path = Path(tmpdir)
+    config.store_path = Path(tmpdir) / "store"
 
     conn = get_connection(config)
     class _BenchEmbedder:
@@ -100,7 +100,7 @@ def run_degradation_level(level: str, docs: list[str], corpus_embeddings: np.nda
             return np.stack([self.encode_single(t) for t in texts])
 
     pid_to_chunk_id = {}
-    for pid, (text, emb) in enumerate(zip(docs, corpus_embeddings)):
+    for pid, (text, emb) in enumerate(zip(docs, corpus_embeddings, strict=False)):
         q_emb = quantize_vector(emb, level) if level != "FP32" else emb
         chunk_id = store_memory(
             conn,
@@ -121,10 +121,10 @@ def run_degradation_level(level: str, docs: list[str], corpus_embeddings: np.nda
     ]
 
     # Build query embedding map for the embedder
-    query_emb_map = {i: q for i, q in enumerate(query_embs)}
+    query_emb_map = dict(enumerate(query_embs))
     embedder = _BenchEmbedder(query_emb_map)
 
-    lexical = LexicalChannel(conn)
+    LexicalChannel(conn)
     vector = VectorChannel(config, conn)
     pipeline = SearchPipeline(conn, config, embedder=embedder)
 

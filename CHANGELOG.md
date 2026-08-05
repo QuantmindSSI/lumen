@@ -4,6 +4,8 @@ All notable changes to Lumen will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0-beta] — 2026-08-05
+
 ### Added
 - Domain corpus dataset (`datasets/domain_corpus.json`) — a hand-crafted knowledge corpus with 111 fact chunks across 8 rooms (machine_learning, nlp, cybersecurity, distributed_systems, healthcare_ai, quantum_computing, open_source, climate_tech), each with 4 structured loci. Designed for both palace seeding (`python -m datasets.seed`) and benchmarking.
 - Palace seed script (`datasets/seed.py`) — populates a Lumen instance from the domain corpus JSON with real embeddings, creating a production-ready knowledge base in ~2 seconds.
@@ -11,12 +13,20 @@ All notable changes to Lumen will be documented in this file.
 - End-to-End Memory Quality benchmark (`benchmarks/e2e/`) — multi-turn conversational memory persistence benchmark with 7 agent personas, 28 queries across 14 sessions. Measures R@k semantic recall, similarity scores, and per-query latency. Bridges Lumen to the SOTA evaluation standards used by MemGPT/Mem0/Zep.
 - LangGraph integration (`lumen.integrations.langgraph`) — `LumenCheckpointSaver` for graph state persistence and `LumenGraphStore` for cross-thread long-term memory. Installable via `pip install lumen[langgraph]`. Includes 9 test cases.
 - Centralized logging helper (`lumen.logging`) — `get_console_logger()` with structlog preference and stdlib `logging` fallback, eliminating the project-wide `except Exception: pass` anti-pattern from 32 modules.
+- API versioning (`/v1/` prefix) for all operational endpoints with backward-compatible public paths (`/health`, `/dashboard`, `/metrics`).
+- Subresource Integrity (SRI) hash for Chart.js CDN resource in dashboard HTML.
+- PGP key for `security@lumen.ai` published in `SECURITY.md`.
+- Optical degradation benchmark (`benchmarks/optical/run.py`) — evaluates retrieval quality at FP32, FP16, INT8, and BINARY quantization levels.
+- TFC sensitivity benchmark (`benchmarks/tfc/run.py`) — grid search across Twin-Force Controller parameters.
+- Stress test benchmark (`benchmarks/stress/run.py`) — 100k+ chunk ingestion, multi-threaded query throughput, and L3 budget eviction validation.
 
 ### Changed
 - Roadmap in README updated to reflect M1–M3 completion and M4 in-progress status.
 - Full codebase reformatted with `ruff format` for consistent style.
 - `benchmarks/run_all.py` now includes the `navigation` and `e2e` suites in the unified orchestrator.
 - Dashboard retrieval metrics (`mcp_server.py`) now load benchmark values dynamically from JSON result files instead of hardcoded constants.
+- Upgraded from alpha to beta status with API stability commitment.
+- `SECURITY.md` updated with supported versions, PGP key, and beta-period limitations.
 
 ### Fixed
 - **CRITICAL**: USearch vector backend now gracefully falls back to brute-force (FakeSqliteVecBackend) when the `usearch` package is unavailable, instead of crashing with `NotImplementedError`.
@@ -32,6 +42,7 @@ All notable changes to Lumen will be documented in this file.
 - Removed dead `pass` in `benchmarks/beir/run.py` except block.
 - Removed empty `if TYPE_CHECKING: pass` block in `lumen/curiosity.py`.
 - Fixed FTS5 lexical search failing on apostrophes, periods, and other punctuation characters in query strings (`retrieval_lexical.py`).
+- Fixed benchmark scripts failing when `_enforce_permissions` attempted to chmod `/tmp` by ensuring store paths are nested under temp directories.
 
 ## [0.1.0] — 2026-07-20
 

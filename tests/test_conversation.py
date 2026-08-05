@@ -3,9 +3,9 @@
 import pytest
 
 from lumen.config import LumenConfig
+from lumen.conversation import ConversationMemory, TurnResult
 from lumen.data.schema import get_connection
 from lumen.force.contextual.embed import MockEmbedder
-from lumen.conversation import ConversationMemory, TurnResult
 
 
 @pytest.fixture

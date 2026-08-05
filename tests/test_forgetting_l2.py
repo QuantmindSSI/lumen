@@ -3,13 +3,12 @@ import sqlite3
 import numpy as np
 import pytest
 
-from lumen.config import LumenConfig
 from lumen.data.schema import init_db
-from lumen.force.mnemonic.retrieval_dense import SqliteVecBackend
 from lumen.force.mnemonic.forgetting_l2_interference import (
-    check_locus_interference,
     INTERFERENCE_THRESHOLD,
+    check_locus_interference,
 )
+from lumen.force.mnemonic.retrieval_dense import SqliteVecBackend
 
 
 @pytest.fixture
@@ -20,7 +19,7 @@ def db_conn():
     conn.execute("INSERT INTO room(room_id, name, room_type) VALUES (1, 'interf', 'domain')")
     conn.execute("INSERT INTO locus(locus_id, room_id, name) VALUES (1, 1, 'l1')")
     conn.commit()
-    backend = SqliteVecBackend(conn, 384)
+    SqliteVecBackend(conn, 384)
     yield conn
     conn.close()
 

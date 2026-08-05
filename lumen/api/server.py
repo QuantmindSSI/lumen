@@ -1,16 +1,16 @@
 """FastAPI server exposing Lumen memory operations.
 
 Endpoints:
-  POST /search      — semantic + lexical hybrid search
-  POST /store       — store a memory chunk
-  POST /feedback    — log explicit or implicit feedback
-  POST /assemble    — retrieve + assemble context in one call
-  POST /turn        — store full conversation turn
-  GET  /health      — liveness probe
-  GET  /status      — palace overview
-  GET  /dashboard   — effectiveness dashboard (HTML)
-  GET  /dashboard-data — dashboard JSON data
-  GET  /metrics     — machine-readable metrics
+  GET  /health           — liveness probe
+  GET  /dashboard        — effectiveness dashboard (HTML)
+  GET  /metrics          — machine-readable metrics
+  GET  /v1/status        — palace overview
+  POST /v1/search       — semantic + lexical hybrid search
+  POST /v1/store        — store a memory chunk
+  POST /v1/feedback     — log explicit or implicit feedback
+  POST /v1/assemble     — retrieve + assemble context in one call
+  POST /v1/turn         — store full conversation turn
+  GET  /v1/dashboard-data — dashboard JSON data
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
@@ -53,10 +53,12 @@ limiter = Limiter(key_func=get_remote_address, default_limits=[_config.api_rate_
 
 app = FastAPI(
     title="Lumen Memory API",
-    version="0.1.0",
+    version="0.2.0",
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+v1_router = APIRouter(prefix="/v1")
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
@@ -70,12 +72,29 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "X-API-Key", "X-Tenant-ID", "X-Request-ID"],
 )
 
 # Module-level state (single instance for pilot)
 _state: dict = {}
+
+# Simple in-memory brute-force tracker for failed API-key attempts.
+# Maps remote_address -> (failure_count, first_failure_timestamp)
+_auth_failures: dict[str, tuple[int, float]] = {}
+
+
+def _check_brute_force(remote_addr: str) -> bool:
+    """Return True if the remote address is currently throttled."""
+    now = time.time()
+    count, first_ts = _auth_failures.get(remote_addr, (0, now))
+    if now - first_ts > 60:
+        # Window expired; reset
+        _auth_failures[remote_addr] = (0, now)
+        return False
+    if count >= 5:
+        return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -88,13 +107,27 @@ async def _auth_middleware(request: Request, call_next):
         "/redoc",
         "/openapi.json",
         "/dashboard",
-        "/dashboard-data",
+        "/v1/dashboard-data",
         "/metrics",
     )
+    # Allow CORS preflight without authentication
+    if request.method == "OPTIONS":
+        response = await call_next(request)
+        return response
+
+    remote_addr = get_remote_address(request)
+
     if _config.api_key and request.url.path not in public_paths:
+        if _check_brute_force(remote_addr):
+            return JSONResponse(status_code=429, content={"detail": "Too many failed authentication attempts"})
         provided = request.headers.get("X-API-Key") or request.query_params.get("api_key")
         if not provided or not _secrets.compare_digest(provided, _config.api_key):
+            count, first_ts = _auth_failures.get(remote_addr, (0, time.time()))
+            _auth_failures[remote_addr] = (count + 1, first_ts)
             return JSONResponse(status_code=401, content={"detail": "Invalid or missing API key"})
+        # Successful auth: reset failures
+        _auth_failures.pop(remote_addr, None)
+
     request_id = str(uuid.uuid4())[:8]
     request.state.request_id = request_id
     tenant_id = request.headers.get("X-Tenant-ID") or request.query_params.get("tenant_id") or "default"
@@ -108,7 +141,7 @@ app.middleware("http")(_auth_middleware)
 
 
 class _SecurityHeadersMiddleware:
-    """Add security headers to all responses."""
+    """Add security headers to all responses; Cache-Control no-store for API paths."""
 
     def __init__(self, app):
         self.app = app
@@ -117,6 +150,8 @@ class _SecurityHeadersMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
+
+        path = scope.get("path", "")
 
         async def _send_with_headers(message):
             if message["type"] == "http.response.start":
@@ -127,6 +162,8 @@ class _SecurityHeadersMiddleware:
                 headers.append((b"content-security-policy", b"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"))
                 headers.append((b"referrer-policy", b"strict-origin-when-cross-origin"))
                 headers.append((b"permissions-policy", b"geolocation=(), microphone=(), camera=()"))
+                if path.startswith("/v1/"):
+                    headers.append((b"cache-control", b"no-store, max-age=0, must-revalidate"))
                 message["headers"] = headers
             await send(message)
 
@@ -321,7 +358,7 @@ async def health() -> dict:
         raise HTTPException(status_code=503, detail="Database unreachable") from exc
 
 
-@app.get("/status")
+@v1_router.get("/status")
 async def status() -> StatusResponse:
     conn = _get_conn()
     if conn is None:
@@ -337,7 +374,7 @@ async def status() -> StatusResponse:
     )
 
 
-@app.post("/search")
+@v1_router.post("/search")
 @limiter.limit(_config.api_rate_limit)
 async def search(request: Request, req: SearchRequest) -> SearchResponse:
     t0 = time.perf_counter()
@@ -366,21 +403,23 @@ async def search(request: Request, req: SearchRequest) -> SearchResponse:
         latency_ms=round(latency_ms, 2),
     )
     request_id = getattr(request.state, "request_id", "unknown")
-    log_audit_event(
-        conn=_get_conn(),
-        event_type="api_request",
-        actor="anonymous",
-        resource_type="query",
-        resource_id=None,
-        action="search",
-        metadata_json=json.dumps({"query": req.query, "results": len(serialised)}),
-        client_ip=get_remote_address(request),
-        request_id=request_id,
-    )
+    audit_conn = _get_conn()
+    if audit_conn is not None:
+        log_audit_event(
+            conn=audit_conn,
+            event_type="api_request",
+            actor="anonymous",
+            resource_type="query",
+            resource_id=None,
+            action="search",
+            metadata_json=json.dumps({"query": req.query, "results": len(serialised)}),
+            client_ip=get_remote_address(request),
+            request_id=request_id,
+        )
     return SearchResponse(query=req.query, results=serialised, latency_ms=round(latency_ms, 2))
 
 
-@app.post("/store")
+@v1_router.post("/store")
 @limiter.limit(_config.api_rate_limit)
 async def store(request: Request, req: StoreRequest) -> StoreResponse:
     from lumen.force.mnemonic.store import store_memory
@@ -417,7 +456,7 @@ async def store(request: Request, req: StoreRequest) -> StoreResponse:
     return StoreResponse(chunk_id=chunk_id, room=req.room)
 
 
-@app.post("/feedback")
+@v1_router.post("/feedback")
 @limiter.limit(_config.api_rate_limit)
 async def feedback(request: Request, req: FeedbackRequest) -> FeedbackResponse:
     conversation = _get_conversation_memory()
@@ -430,21 +469,23 @@ async def feedback(request: Request, req: FeedbackRequest) -> FeedbackResponse:
         feedback_type=req.feedback_type,
     )
     request_id = getattr(request.state, "request_id", "unknown")
-    log_audit_event(
-        conn=_get_conn(),
-        event_type="feedback_logged",
-        actor=req.user_id,
-        resource_type="feedback",
-        resource_id=req.chunk_id,
-        action="feedback",
-        metadata_json=json.dumps({"was_useful": req.was_useful}),
-        client_ip=get_remote_address(request),
-        request_id=request_id,
-    )
+    audit_conn = _get_conn()
+    if audit_conn is not None:
+        log_audit_event(
+            conn=audit_conn,
+            event_type="feedback_logged",
+            actor=req.user_id,
+            resource_type="feedback",
+            resource_id=req.chunk_id,
+            action="feedback",
+            metadata_json=json.dumps({"was_useful": req.was_useful}),
+            client_ip=get_remote_address(request),
+            request_id=request_id,
+        )
     return FeedbackResponse(success=True)
 
 
-@app.post("/assemble")
+@v1_router.post("/assemble")
 @limiter.limit(_config.api_rate_limit)
 async def assemble(request: Request, req: SearchRequest) -> dict:
     t0 = time.perf_counter()
@@ -461,7 +502,7 @@ async def assemble(request: Request, req: SearchRequest) -> dict:
     }
 
 
-@app.post("/turn")
+@v1_router.post("/turn")
 @limiter.limit(_config.api_rate_limit)
 async def turn(request: Request, req: TurnRequest) -> TurnResponse:
     conversation = _get_conversation_memory()
@@ -563,7 +604,7 @@ def _load_retrieval_benchmarks() -> dict:
         return {}
 
 
-@app.get("/dashboard-data")
+@v1_router.get("/dashboard-data")
 async def dashboard_data() -> dict:
     """Return dynamic data for the dashboard: room topology, memory health, TFC."""
     conn = _get_conn()
@@ -655,7 +696,7 @@ async def metrics() -> dict:
     config = _get_config()
 
     return {
-        "lumen_version": "0.1.0-alpha",
+        "lumen_version": "0.2.0-beta",
         "system": {
             "device": config.device,
             "embedding_model": config.embedding_model,
@@ -686,6 +727,9 @@ async def metrics() -> dict:
             "ram_mb_estimate": round(90 + (chunk_count * 2.8 / 1024), 1),
         },
     }
+
+
+app.include_router(v1_router)
 
 
 def main() -> None:

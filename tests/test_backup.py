@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 
 from lumen.config import LumenConfig
-from lumen.data.schema import get_connection
 from lumen.data.backup import backup_database
+from lumen.data.schema import get_connection
 
 
 @pytest.fixture

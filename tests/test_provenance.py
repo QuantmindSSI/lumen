@@ -8,7 +8,6 @@ from lumen.force.mnemonic.provenance import (
     create_provenance,
     get_effective_fact,
     supersede_chunk,
-    ProvenanceRecord,
 )
 
 
@@ -61,7 +60,7 @@ def test_create_provenance_stores_record(db_conn):
 
 
 def test_supersede_chunk_sets_valid_to(db_conn):
-    now = int(time.time())
+    int(time.time())
     db_conn.execute(
         "INSERT INTO chunk(chunk_id, room_id, locus_id, content, content_hash, valid_to) "
         "VALUES (10, 1, 1, 'old', 'h10', NULL)"

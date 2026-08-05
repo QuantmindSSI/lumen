@@ -177,7 +177,7 @@ The FastAPI server provides a production-ready surface:
 - **Rate limiting**: slowapi with configurable `LUMEN_API_RATE_LIMIT`.
 - **CORS**: configurable `LUMEN_ALLOWED_ORIGINS`.
 - **Request safety**: body-size limit (default 1 MB), request-ID propagation (`X-Request-ID`), global unhandled-exception handler (no stack traces in responses).
-- **Endpoints**: `/search`, `/store`, `/feedback`, `/assemble`, `/turn`, `/health`, `/status`, `/dashboard`, `/dashboard-data`, `/metrics`.
+- **Endpoints**: `/v1/search`, `/v1/store`, `/v1/feedback`, `/v1/assemble`, `/v1/turn`, `/v1/status`, `/v1/dashboard-data`, `/health`, `/dashboard`, `/metrics`.
 
 ### 3.6 Effectiveness Dashboard
 

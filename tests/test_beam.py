@@ -10,7 +10,7 @@ import pytest
 
 from lumen.config import LumenConfig
 from lumen.data.schema import init_db
-from lumen.p2p.beam import BeamNode, availability, decode_frame, encode_frame
+from lumen.p2p.beam import BeamNode, decode_frame, encode_frame
 
 
 @pytest.fixture
@@ -30,6 +30,7 @@ def beam_config(tmp_path):
         store_path=str(tmp_path / ".lumen"),
         beam_port=9999,
         sovereign=False,
+        p2p_encryption_key="test-beam-key-1234",
     )
 
 
@@ -150,7 +151,7 @@ def test_receive_stores_memory(memory_db, beam_config, monkeypatch):
         "ttl": 24,
         "chunks": [{"content": "hello beam", "vm": 0.6, "hash": "h1"}],
     }
-    framed = encode_frame(packet)
+    framed = encode_frame(packet, crypto=node._crypto, signer=node._signer)
 
     async def _run():
         reader = asyncio.StreamReader()
@@ -180,7 +181,7 @@ def test_receive_empty_packet_graceful(beam_config):
     node = BeamNode(beam_config)
 
     packet = {"room": "", "ttl": 24, "chunks": []}
-    framed = encode_frame(packet)
+    framed = encode_frame(packet, crypto=node._crypto, signer=node._signer)
 
     async def _run():
         reader = asyncio.StreamReader()

@@ -8,6 +8,7 @@ import pytest
 
 from lumen.compliance.safety_forgetting import safety_scan_chunk
 from lumen.config import LumenConfig
+from lumen.controller import TFCState, TwinForceController
 from lumen.data.schema import init_db
 from lumen.force.contextual.assembly import assemble_context
 from lumen.force.contextual.embed import FallbackEmbedder
@@ -16,7 +17,6 @@ from lumen.force.mnemonic.retrieval_dense import SqliteVecBackend
 from lumen.force.mnemonic.retrieval_lexical import LexicalChannel
 from lumen.force.mnemonic.store import store_memory
 from lumen.force.mnemonic.value_model import compute_vm
-from lumen.controller import TFCState, TwinForceController
 from lumen.fusion import fuse_and_rerank
 
 

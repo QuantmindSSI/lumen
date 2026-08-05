@@ -1,8 +1,6 @@
 import time
 
-import pytest
-
-from lumen.force.mnemonic.event_buffer import EventMemoryBuffer, Event
+from lumen.force.mnemonic.event_buffer import Event, EventMemoryBuffer
 
 
 def test_append_adds_event():

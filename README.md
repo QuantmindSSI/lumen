@@ -20,7 +20,7 @@
   <img src="https://img.shields.io/badge/tests-243%20passed-brightgreen?style=flat-square" alt="Tests">
 </p>
 
-<p><em>Alpha software. Actively developed. Contributions welcome.</em></p>
+<p><em>Beta software. API-stable; actively developed. Contributions welcome.</em></p>
 
 </div>
 
@@ -100,15 +100,16 @@ TFC → e=0.50 a=0.50 tau=7.0 r=3
 ### API endpoints
 
 ```
-GET  /health           Liveness probe
-GET  /status           Palace overview
-POST /search           Semantic + lexical hybrid search
-POST /store            Store a memory chunk
-POST /feedback         Log explicit or implicit feedback
-POST /assemble         Retrieve + assemble context in one call
-POST /turn             Store full conversation turn
-GET  /dashboard        Effectiveness dashboard (HTML)
-GET  /metrics          Machine-readable metrics
+GET  /health            Liveness probe (unversioned)
+GET  /dashboard         Effectiveness dashboard (HTML)
+GET  /metrics           Machine-readable metrics
+GET  /v1/status        Palace overview
+POST /v1/search       Semantic + lexical hybrid search
+POST /v1/store        Store a memory chunk
+POST /v1/feedback     Log explicit or implicit feedback
+POST /v1/assemble     Retrieve + assemble context in one call
+POST /v1/turn         Store full conversation turn
+GET  /v1/dashboard-data Dashboard data as JSON
 ```
 
 ---
@@ -132,7 +133,7 @@ User Input → Intent Router → Parallel Retrieval (BM25 + Dense + Graph)
 
 ## State of the Project
 
-Lumen is **functional alpha software**. It works end-to-end — you can store memories, search them, assemble context, and use the integrations. It is not yet production-hardened in every dimension.
+Lumen is **beta software**. It works end-to-end with API versioning, comprehensive tests, and documented security limitations. It is suitable for evaluation, development, and trusted-LAN deployments.
 
 | Dimension | Status | Detail |
 |---|---|---|
@@ -142,12 +143,12 @@ Lumen is **functional alpha software**. It works end-to-end — you can store me
 | **Forgetting** | Working | L1 decay (Ebbinghaus), L2 interference, L3 budget eviction. |
 | **PII detection** | Working | Regex-based scanning at storage time. Configurable block/redact/hash. |
 | **Audit logging** | Working | SQLite audit_log table with request tracing. |
-| **API server** | Working | FastAPI with auth (constant-time key comparison), rate limiting, CORS. |
+| **API server** | Working | FastAPI with `/v1/` versioning, auth, rate limiting, CORS, security headers. |
 | **MCP server** | Working | 7 tools (search, store, assemble, turn, feedback, status, dashboard). |
 | **LangChain** | Working | LumenChatMemory adapter (requires `langchain` package). |
 | **LangGraph** | Working | LumenCheckpointSaver (requires `langgraph` package). |
-| **Encryption-at-rest** | Not implemented | Use OS-level disk encryption (LUKS, FileVault, BitLocker). |
-| **BEIR benchmarks** | Harness exists, not run | Runner at `benchmarks/beir/run.py`. Results pending. |
+| **Encryption-at-rest** | Not implemented | Use OS-level disk encryption (LUKS, FileVault, BitLocker). Planned for v0.3.0. |
+| **BEIR benchmarks** | Harness ready | Runner at `benchmarks/beir/run.py`. Full evaluation deferred to HPC. |
 | **P2P sharing** | Plaintext only | Beam protocol works on trusted LANs. No transport encryption. |
 
 ---

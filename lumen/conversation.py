@@ -11,17 +11,18 @@ from dataclasses import dataclass
 
 from lumen.brand.errors import ModelNotAvailableError
 from lumen.config import LumenConfig
+from lumen.controller import TwinForceController
 from lumen.data.schema import get_connection
+from lumen.epistemic import EpistemicTracker
 from lumen.force.contextual.assembly import assemble_context
 from lumen.force.contextual.embed import get_embedder
 from lumen.force.mnemonic.retrieval_graph import GraphChannel
 from lumen.force.mnemonic.store import _tenant_id_supported, store_memory
+from lumen.force.mnemonic.user_profile import get_profile, update_vm_weights
 from lumen.force.mnemonic.value_model import DEFAULT_WEIGHTS, learn_weights_from_feedback
-from lumen.logging import get_console_logger
-from lumen.controller import TwinForceController
-from lumen.epistemic import EpistemicTracker
 from lumen.fusion import RetrievedChunk
 from lumen.goals import GoalTree
+from lumen.logging import get_console_logger
 from lumen.search import SearchPipeline
 
 logger = get_console_logger(__name__)
@@ -108,13 +109,10 @@ class ConversationMemory:
         self._ensure_user_profile()
 
     def _ensure_user_profile(self) -> None:
-        self.conn.execute(
-            """INSERT INTO user_profile (user_id, vm_weights_json)
-               VALUES (?, ?)
-               ON CONFLICT(user_id) DO NOTHING""",
-            (self.user_id, json.dumps(DEFAULT_WEIGHTS)),
-        )
-        self.conn.commit()
+        profile = get_profile(self.conn, self.user_id)
+        if not profile:
+            update_vm_weights(self.conn, self.user_id, DEFAULT_WEIGHTS.copy())
+            self.conn.commit()
 
     def retrieve_and_assemble(
         self,
@@ -290,12 +288,7 @@ class ConversationMemory:
                 return DEFAULT_WEIGHTS.copy()
 
             new_weights = learn_weights_from_feedback(self.conn, user_id=user_id)
-            self.conn.execute(
-                """UPDATE user_profile
-                   SET vm_weights_json = ?
-                   WHERE user_id = ?""",
-                (json.dumps(new_weights), user_id),
-            )
+            update_vm_weights(self.conn, user_id, new_weights)
             self.conn.commit()
             logger.info("vm_weights_learned", user_id=user_id, weights=new_weights)
             return new_weights

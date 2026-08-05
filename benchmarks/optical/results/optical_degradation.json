@@ -14,7 +14,7 @@
         "ndcg@3": 1.0,
         "ndcg@5": 1.0,
         "ndcg@10": 1.0,
-        "latency_ms_mean": 1.12
+        "latency_ms_mean": 1.42
       },
       "hybrid": {
         "recall@1": 0.2,
@@ -25,7 +25,7 @@
         "ndcg@3": 0.9377,
         "ndcg@5": 0.863,
         "ndcg@10": 0.9662,
-        "latency_ms_mean": 6.08
+        "latency_ms_mean": 6.48
       }
     },
     {
@@ -39,7 +39,7 @@
         "ndcg@3": 1.0,
         "ndcg@5": 1.0,
         "ndcg@10": 1.0,
-        "latency_ms_mean": 1.03
+        "latency_ms_mean": 0.96
       },
       "hybrid": {
         "recall@1": 0.2,
@@ -50,7 +50,7 @@
         "ndcg@3": 0.9377,
         "ndcg@5": 0.863,
         "ndcg@10": 0.9662,
-        "latency_ms_mean": 7.15
+        "latency_ms_mean": 4.81
       }
     },
     {
@@ -64,7 +64,7 @@
         "ndcg@3": 0.7091,
         "ndcg@5": 0.605,
         "ndcg@10": 0.6583,
-        "latency_ms_mean": 1.5
+        "latency_ms_mean": 0.99
       },
       "hybrid": {
         "recall@1": 0.2,
@@ -75,7 +75,7 @@
         "ndcg@3": 0.881,
         "ndcg@5": 0.7884,
         "ndcg@10": 0.8868,
-        "latency_ms_mean": 6.98
+        "latency_ms_mean": 5.01
       }
     },
     {
@@ -89,7 +89,7 @@
         "ndcg@3": 0.5963,
         "ndcg@5": 0.4754,
         "ndcg@10": 0.5111,
-        "latency_ms_mean": 1.21
+        "latency_ms_mean": 1.37
       },
       "hybrid": {
         "recall@1": 0.196,
@@ -100,7 +100,7 @@
         "ndcg@3": 0.6636,
         "ndcg@5": 0.5517,
         "ndcg@10": 0.6323,
-        "latency_ms_mean": 6.17
+        "latency_ms_mean": 4.85
       }
     }
   ]

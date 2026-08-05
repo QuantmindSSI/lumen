@@ -15,7 +15,7 @@ commands:
   - name: lumen-search
     description: Search the Lumen memory palace
     run: |
-      curl -s -X POST http://localhost:8848/search \
+      curl -s -X POST http://localhost:8848/v1/search \
         -H "Content-Type: application/json" \
         -d "{\"query\":\"$args\",\"top_k\":5}"
 
@@ -23,7 +23,7 @@ commands:
   - name: lumen-store
     description: Store a memory in the Lumen palace
     run: |
-      curl -s -X POST http://localhost:8848/store \
+      curl -s -X POST http://localhost:8848/v1/store \
         -H "Content-Type: application/json" \
         -d "{\"content\":\"$args\",\"room\":\"decisions\"}"
 
@@ -31,7 +31,7 @@ commands:
   - name: lumen-context
     description: Assemble relevant context from Lumen
     run: |
-      curl -s -X POST http://localhost:8848/assemble \
+      curl -s -X POST http://localhost:8848/v1/assemble \
         -H "Content-Type: application/json" \
         -d "{\"query\":\"$args\",\"top_k\":5}"
 ```
@@ -63,7 +63,7 @@ def main():
     # Store the commit/context in Lumen
     subprocess.run(
         [
-            "curl", "-s", "-X", "POST", "http://localhost:8848/store",
+            "curl", "-s", "-X", "POST", "http://localhost:8848/v1/store",
             "-H", "Content-Type: application/json",
             "-d", f'{{"content":{repr(content[:2000])},"room":"commits","source_type":"import"}}',
         ],
@@ -82,7 +82,7 @@ Add to your shell profile:
 ```bash
 # Aider with Lumen context injection
 aider-lumen() {
-  context=$(curl -s -X POST http://localhost:8848/assemble \
+  context=$(curl -s -X POST http://localhost:8848/v1/assemble \
     -H "Content-Type: application/json" \
     -d "{\"query\":\"$*\",\"top_k\":3}" | jq -r '.assembled_context // empty')
   if [ -n "$context" ]; then

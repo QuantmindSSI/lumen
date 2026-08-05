@@ -112,7 +112,7 @@ def _get_embedder(model_name):
 
 def _generate_synthetic_corpus(seed: int):
     """Generate a deterministic synthetic corpus with keyword-overlap relevance."""
-    rng = np.random.default_rng(seed)
+    np.random.default_rng(seed)
 
     topics = [
         "machine learning", "deep learning", "neural networks",
@@ -188,8 +188,7 @@ def _load_ms_marco():
         qrels: dict[str, set[str]] = {}
 
         # MS MARCO streaming returns dicts with 'query', 'passages', 'query_id' etc.
-        count = 0
-        for example in ds:
+        for count, example in enumerate(ds):
             pq = example["query"]
             example.get("query_type")
             answers = example.get("answers", [])
@@ -225,7 +224,6 @@ def _load_ms_marco():
                 if i < len(pis) and pis[i]:
                     qrels.setdefault(qid, set()).add(pid_str)
 
-            count += 1
             if count >= NUM_QUERIES:
                 break
 

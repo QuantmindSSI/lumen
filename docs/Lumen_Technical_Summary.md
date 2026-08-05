@@ -1,6 +1,6 @@
 # Lumen: Technical Summary
 
-**Version:** v0.1.0-alpha | **Type:** Local-first agentic memory framework | **License:** Apache 2.0
+**Version:** v0.2.0-beta | **Type:** Local-first agentic memory framework | **License:** Apache 2.0
 
 ---
 

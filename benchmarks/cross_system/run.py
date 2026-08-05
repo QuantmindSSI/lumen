@@ -12,6 +12,7 @@ Seeds: 3 (bootstrap 95% CI)
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import time
@@ -114,7 +115,8 @@ def _bench_lumen(docs, queries, relevant, seed):
     np.random.seed(seed)
     embedder = _get_embedder()
     tmpdir = tempfile.mkdtemp(prefix="lumen_cross_")
-    config = LumenConfig(store_path=Path(tmpdir), embedding_dims=EMBED_DIMS, vector_index="sqlite-vec")
+    store_path = Path(tmpdir) / "store"
+    config = LumenConfig(store_path=store_path, embedding_dims=EMBED_DIMS, vector_index="sqlite-vec")
     conn = get_connection(config)
 
     t0 = time.perf_counter()
@@ -142,9 +144,11 @@ def _bench_lumen(docs, queries, relevant, seed):
 
     import psutil
     rss_mb = psutil.Process().memory_info().rss / 1024 / 1024
-    db_bytes = (Path(tmpdir) / "store" / "lumen.db").stat().st_size
+    db_bytes = os.path.getsize(config.db_path) if config.db_path.exists() else 0
     conn.close()
-    import shutil; shutil.rmtree(tmpdir, ignore_errors=True)
+    import shutil
+
+    shutil.rmtree(tmpdir, ignore_errors=True)
 
     return {
         "recall": metrics["recall"],

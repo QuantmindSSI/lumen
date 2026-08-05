@@ -501,7 +501,7 @@ def _compute_metrics(embedder, retrieved_chunks, expected_texts) -> dict:
     def _fraction_matched(k):
         matched = set()
         for i, e_vec in enumerate(e_vecs):
-            for j, r_vec in enumerate(r_vecs[:k]):
+            for _j, r_vec in enumerate(r_vecs[:k]):
                 if _cosine_sim(e_vec, r_vec) > threshold:
                     matched.add(i)
                     break
@@ -636,7 +636,6 @@ def run_e2e_benchmark():
 
     # Memory persistence: queries that ask about facts from earlier turns vs current turn
     # (in our sessions, all queries ask about facts stored 2 turns back)
-    persistence_r10 = all_r10  # all queries are cross-turn by design
 
     agg = {}
     for name, vals in [("recall_1", all_r1), ("recall_5", all_r5), ("recall_10", all_r10),

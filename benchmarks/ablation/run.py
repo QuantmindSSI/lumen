@@ -25,7 +25,6 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 
@@ -34,14 +33,13 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from lumen.config import LumenConfig
-from lumen.data.schema import ensure_schema, get_connection
-from lumen.force.mnemonic.retrieval_dense import DenseHit, VectorChannel
-from lumen.force.mnemonic.retrieval_graph import GraphChannel
-from lumen.force.mnemonic.retrieval_lexical import LexicalChannel, LexicalHit
-from lumen.force.mnemonic.store import store_memory
 from lumen.controller import TwinForceController
-from lumen.fusion import fuse_and_rerank, RetrievedChunk
-from lumen.intent import IntentRouter
+from lumen.data.schema import get_connection
+from lumen.force.mnemonic.retrieval_dense import VectorChannel
+from lumen.force.mnemonic.retrieval_graph import GraphChannel
+from lumen.force.mnemonic.retrieval_lexical import LexicalChannel
+from lumen.force.mnemonic.store import store_memory
+from lumen.fusion import RetrievedChunk, fuse_and_rerank
 
 # ---------------------------------------------------------------------------
 # Corpus
@@ -227,7 +225,7 @@ def run_ablations():
     for room in corpus["rooms"]:
         texts = [c["content"] for c in room["chunks"]]
         embs = embedder.encode(texts)
-        for c, emb in zip(room["chunks"], embs):
+        for c, emb in zip(room["chunks"], embs, strict=False):
             store_memory(conn, content=c["content"], room_name=room["name"],
                          locus_name=c["locus"], embedding=emb, config=config)
             total += 1
@@ -276,12 +274,15 @@ def run_ablations():
                                            provenance_id=None, rrf_score=0, vm_score=0.5,
                                            frqad_score=0.5, recency_hours=0, final_score=1.0/h.rank)
                            for h in lexical_hits]
-                # Resolve room/locus
+                 # Resolve room/locus
                 for r in results:
                     row = conn.execute("SELECT r2.name, l.name FROM chunk c JOIN room r2 ON r2.room_id=c.room_id LEFT JOIN locus l ON l.locus_id=c.locus_id WHERE c.chunk_id=?", (r.chunk_id,)).fetchone()
-                    if row: r.room_name = row[0]; r.locus_name = row[1] or ""
+                    if row:
+                        r.room_name = row[0]
+                        r.locus_name = row[1] or ""
                     row2 = conn.execute("SELECT content FROM chunk WHERE chunk_id=?", (r.chunk_id,)).fetchone()
-                    if row2: r.content = row2[0]
+                    if row2:
+                        r.content = row2[0]
                 latency_ms = (time.perf_counter() - t0) * 1000
             elif name == "DENSE_ONLY":
                 t0 = time.perf_counter()
@@ -293,9 +294,12 @@ def run_ablations():
                            for h in dense_hits]
                 for r in results:
                     row = conn.execute("SELECT r2.name, l.name FROM chunk c JOIN room r2 ON r2.room_id=c.room_id LEFT JOIN locus l ON l.locus_id=c.locus_id WHERE c.chunk_id=?", (r.chunk_id,)).fetchone()
-                    if row: r.room_name = row[0]; r.locus_name = row[1] or ""
+                    if row:
+                        r.room_name = row[0]
+                        r.locus_name = row[1] or ""
                     row2 = conn.execute("SELECT content FROM chunk WHERE chunk_id=?", (r.chunk_id,)).fetchone()
-                    if row2: r.content = row2[0]
+                    if row2:
+                        r.content = row2[0]
                 latency_ms = (time.perf_counter() - t0) * 1000
             else:
                 results, latency_ms = _run_ablation(conn, config, embedder, q["query"], ctrl, use_vm, use_graph)

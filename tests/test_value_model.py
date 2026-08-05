@@ -1,8 +1,8 @@
 from lumen.force.mnemonic.value_model import (
+    DEFAULT_WEIGHTS,
+    FACTOR_KEYS,
     compute_vm,
     extract_factors,
-    FACTOR_KEYS,
-    DEFAULT_WEIGHTS,
     learn_weights_from_feedback,
 )
 
@@ -49,7 +49,7 @@ def test_compute_vm_default_weights_used():
 
 
 def test_compute_vm_with_custom_weights():
-    custom_weights = {k: 0.0 for k in FACTOR_KEYS}
+    custom_weights = dict.fromkeys(FACTOR_KEYS, 0.0)
     custom_weights["task_utility"] = 1.0
     vm, factors = compute_vm(
         "I must schedule a call",
@@ -77,6 +77,7 @@ def test_extract_factors_no_goals_defaults():
 
 def test_learn_weights_from_feedback_insufficient_data():
     import sqlite3
+
     from lumen.data.schema import init_db
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row

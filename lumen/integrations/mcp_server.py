@@ -38,14 +38,13 @@ else:
     _MCP_AVAILABLE = True
     _MCP_ERROR = None
 
-from lumen.brand.errors import ModelNotAvailableError
+from lumen._init import initialize_palace
 from lumen.config import LumenConfig
-from lumen.force.mnemonic.store import store_memory
-from lumen.logging import get_console_logger
 from lumen.controller import TwinForceController
 from lumen.conversation import ConversationMemory
+from lumen.force.mnemonic.store import store_memory
+from lumen.logging import get_console_logger
 from lumen.search import SearchPipeline
-from lumen._init import initialize_palace
 
 logger = get_console_logger(__name__)
 
@@ -279,7 +278,7 @@ async def lumen_dashboard(ctx: Context = None) -> str:
 
     return (
         f"╔══════════════════════════════════════════════╗\n"
-        f"║     Lumen Effectiveness Dashboard v0.1.0    ║\n"
+        f"║     Lumen Effectiveness Dashboard v0.2.0    ║\n"
         f"╠══════════════════════════════════════════════╣\n"
         f"║ System Health                               ║\n"
         f"╠══════════════════════════════════════════════╣\n"
@@ -453,7 +452,7 @@ def _dashboard_metrics(state: LumenAppState) -> dict:
     degradation_stage = stage_map.get(env["r"], "FP32")
 
     return {
-        "version": "0.1.0-alpha",
+        "version": "0.2.0-beta",
         "system": {
             "device": state.config.device,
             "embedder": state.config.embedding_model,

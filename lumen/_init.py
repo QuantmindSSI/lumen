@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import sqlite3
-
 from lumen.brand.errors import ModelNotAvailableError
 from lumen.config import LumenConfig
 from lumen.controller import TwinForceController

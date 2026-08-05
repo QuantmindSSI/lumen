@@ -102,6 +102,21 @@ class SearchPipeline:
             for seed in seed_ids:
                 graph_hits.extend(self.graph.traverse_from_seed(seed, hops=2))
 
+        # Stage 2c: Spreading activation (NetworkX) — wider context prefetch
+        if self.graph is not None and hasattr(self.graph, "_graph") and self.graph._nx is not None:
+            from lumen.force.mnemonic.spreading import spread_activation
+
+            try:
+                activations = spread_activation(
+                    self.graph._graph, seed_ids, self.tfc.state.a
+                )
+                existing_ids = {h.chunk_id for h in graph_hits}
+                for node_id, _score in activations.items():
+                    if node_id not in existing_ids:
+                        graph_hits.append(GraphHit(node_id, depth=1, path=[node_id]))
+            except Exception as exc:
+                logger.debug("spreading_activation_failed", error=str(exc))
+
         # Stage 3: Fusion & rerank
         results = fuse_and_rerank(
             lexical_hits,

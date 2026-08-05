@@ -3,9 +3,8 @@ import sqlite3
 import numpy as np
 import pytest
 
-from lumen.config import LumenConfig
 from lumen.data.schema import init_db
-from lumen.force.mnemonic.retrieval_dense import SqliteVecBackend, DenseHit
+from lumen.force.mnemonic.retrieval_dense import DenseHit, SqliteVecBackend
 
 
 @pytest.fixture
@@ -73,7 +72,7 @@ def test_remove_works(backend, db_conn):
 def test_degrade_works(backend, db_conn):
     vec = _make_vec()
     backend.add(400, vec)
-    original_blob = db_conn.execute(
+    db_conn.execute(
         "SELECT embedding FROM vec_fallback WHERE chunk_id = ?", (400,)
     ).fetchone()[0]
     backend.degrade(400, "FP16")

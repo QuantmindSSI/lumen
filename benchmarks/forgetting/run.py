@@ -26,7 +26,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
-    import lumen
+    import lumen  # noqa: F401
 except ImportError as exc:
     print(f"[ERROR] Cannot import lumen: {exc}")
     sys.exit(1)
@@ -174,7 +174,7 @@ def run_benchmark() -> dict[str, Any]:
         locus_chunks.setdefault(lid, []).append((cid, cid_to_emb[cid], vm))
 
     true_high_sim = 0
-    for lid, chunks in locus_chunks.items():
+    for _lid, chunks in locus_chunks.items():
         if len(chunks) < 2:
             continue
         for i in range(len(chunks)):
@@ -199,7 +199,7 @@ def run_benchmark() -> dict[str, Any]:
 
     # Simpler approach: re-run interference on every pair and see what the function would do
     weakened_count_from_audit = 0
-    for lid, chunks in locus_chunks.items():
+    for _lid, chunks in locus_chunks.items():
         for idx_new in range(1, len(chunks)):
             cid_new, emb_new, _ = chunks[idx_new]
             for idx_old in range(idx_new):

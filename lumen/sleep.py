@@ -118,8 +118,26 @@ class SleepScheduler:
                 batcher.queue.clear()
         except Exception as exc:
             logger.error("sleep_consolidation_error", stage="flush", error=str(exc))
-        finally:
+
+        # Backup and log rotation (wired orphaned modules)
+        try:
+            from lumen.data.backup import backup_database
+            backup_database(self.config.db_path)
+            logger.info("backup_completed")
+        except Exception as exc:
+            logger.error("sleep_consolidation_error", stage="backup", error=str(exc))
+
+        try:
+            from lumen.sovereign.log_rotation import rotate_jsonl_logs
+            rotate_jsonl_logs()
+            logger.info("log_rotation_completed")
+        except Exception as exc:
+            logger.error("sleep_consolidation_error", stage="log_rotation", error=str(exc))
+
+        try:
             conn.close()
+        except Exception:
+            pass
 
         logger.info("sleep_consolidation_end")
 

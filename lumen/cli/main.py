@@ -4,6 +4,7 @@ All commands execute real business logic.
 """
 
 import asyncio
+import os
 import signal
 import sys
 import time

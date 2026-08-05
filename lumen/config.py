@@ -71,6 +71,7 @@ class LumenConfig(BaseSettings):
     tfc_default_tau: float = 7.0
     tfc_default_resolution: int = 3
     encryption_key: str | None = None
+    database_encryption_mode: Literal["sqlcipher", "fernet", "none"] = "none"
     p2p_encryption_key: str | None = None
 
     _resolved: bool = PrivateAttr(default=False)

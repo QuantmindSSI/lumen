@@ -65,7 +65,7 @@ class TestSecurityHeaders:
 class TestAuthMiddleware:
     def test_protected_endpoint_without_key(self, client, monkeypatch):
         # Default fixture has no API key set, so endpoints are open
-        resp = client.post("/search", json={"query": "test", "top_k": 3})
+        resp = client.post("/v1/search", json={"query": "test", "top_k": 3})
         assert resp.status_code == 200
 
     def test_protected_endpoint_rejects_invalid_key(self, client, monkeypatch):
@@ -75,12 +75,12 @@ class TestAuthMiddleware:
         original_key = server_mod._config.api_key
         server_mod._config.api_key = "supersecrettestkey"
         try:
-            resp = client.post("/search", json={"query": "test", "top_k": 3})
+            resp = client.post("/v1/search", json={"query": "test", "top_k": 3})
             assert resp.status_code == 401
             assert "API key" in resp.json()["detail"]
 
             resp = client.post(
-                "/search",
+                "/v1/search",
                 json={"query": "test", "top_k": 3},
                 headers={"X-API-Key": "wrong-key"},
             )
@@ -95,7 +95,7 @@ class TestAuthMiddleware:
         server_mod._config.api_key = "supersecrettestkey"
         try:
             resp = client.post(
-                "/search",
+                "/v1/search",
                 json={"query": "test", "top_k": 3},
                 headers={"X-API-Key": "supersecrettestkey"},
             )
@@ -111,7 +111,20 @@ class TestRateLimiting:
         assert hasattr(server_mod.app.state, "limiter")
         assert server_mod.app.state.limiter is not None
         # Verify the decorator is wired by checking route handlers
-        route = next((r for r in server_mod.app.routes if r.path == "/search"), None)
+        route = None
+        for r in server_mod.app.routes:
+            if getattr(r, "path", None) == "/v1/search":
+                route = r
+                break
+            # Included routers in newer FastAPI versions
+            router = getattr(r, "original_router", None)
+            if router:
+                for sr in getattr(router, "routes", []):
+                    if getattr(sr, "path", None) == "/v1/search":
+                        route = sr
+                        break
+            if route:
+                break
         assert route is not None
         # Slowapi uses a wrapper, so endpoint is the limiter wrapper
         assert route.endpoint.__name__ == "search"
@@ -163,7 +176,7 @@ class TestHealth:
 
 class TestStatus:
     def test_status_initial(self, client):
-        resp = client.get("/status")
+        resp = client.get("/v1/status")
         assert resp.status_code == 200
         body = resp.json()
         assert body["rooms"] >= 0
@@ -174,7 +187,7 @@ class TestStatus:
 class TestStoreAndSearch:
     def test_store_memory(self, client):
         resp = client.post(
-            "/store",
+            "/v1/store",
             json={
                 "content": "The quick brown fox",
                 "room": "animals",
@@ -189,7 +202,7 @@ class TestStoreAndSearch:
     def test_search_finds_stored(self, client):
         # Store
         client.post(
-            "/store",
+            "/v1/store",
             json={
                 "content": "project alpha requirements",
                 "room": "projects",
@@ -197,7 +210,7 @@ class TestStoreAndSearch:
             },
         )
         # Search
-        resp = client.post("/search", json={"query": "alpha requirements", "top_k": 5})
+        resp = client.post("/v1/search", json={"query": "alpha requirements", "top_k": 5})
         assert resp.status_code == 200
         body = resp.json()
         assert body["query"] == "alpha requirements"
@@ -208,7 +221,7 @@ class TestFeedback:
     def test_feedback_creation(self, client):
         # Seed a chunk first so FK constraint is satisfied
         client.post(
-            "/store",
+            "/v1/store",
             json={
                 "content": "feedback target",
                 "room": "feedback_test",
@@ -216,7 +229,7 @@ class TestFeedback:
             },
         )
         resp = client.post(
-            "/feedback",
+            "/v1/feedback",
             json={
                 "chunk_id": 1,
                 "was_useful": True,
@@ -230,7 +243,7 @@ class TestFeedback:
 
 class TestAssemble:
     def test_assemble_empty(self, client):
-        resp = client.post("/assemble", json={"query": "what is the weather?", "top_k": 3})
+        resp = client.post("/v1/assemble", json={"query": "what is the weather?", "top_k": 3})
         assert resp.status_code == 200
         body = resp.json()
         assert "assembled_context" in body
@@ -240,7 +253,7 @@ class TestAssemble:
 class TestTurn:
     def test_turn_store(self, client):
         resp = client.post(
-            "/turn",
+            "/v1/turn",
             json={
                 "user_msg": "Hello",
                 "assistant_msg": "Hi there",
@@ -264,14 +277,14 @@ class TestDashboard:
     def test_dashboard_data(self, client):
         # Seed a room
         client.post(
-            "/store",
+            "/v1/store",
             json={
                 "content": "dashboard test memory",
                 "room": "dashboard_test",
                 "source_type": "user_input",
             },
         )
-        resp = client.get("/dashboard-data")
+        resp = client.get("/v1/dashboard-data")
         assert resp.status_code == 200
         body = resp.json()
         assert "rooms" in body
@@ -285,7 +298,7 @@ class TestDashboard:
         resp = client.get("/metrics")
         assert resp.status_code == 200
         body = resp.json()
-        assert body["lumen_version"] == "0.1.0-alpha"
+        assert body["lumen_version"] == "0.2.0-beta"
         assert "system" in body
         assert "palace" in body
         assert "business" in body

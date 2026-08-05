@@ -1,6 +1,6 @@
 # Lumen — Technical Documentation
 
-**Version:** v0.1.0-alpha
+**Version:** v0.2.0-beta
 **License:** Apache 2.0
 **Python:** 3.10+
 
@@ -196,16 +196,16 @@ All configuration via environment variables (`LUMEN_` prefix), TOML file (`~/.lu
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/health` | Liveness probe |
-| GET | `/status` | Palace overview (rooms, loci, chunks, TFC state) |
-| POST | `/search` | Hybrid search (`query`, `top_k`) |
-| POST | `/store` | Store memory chunk (`content`, `room`, `locus`) |
-| POST | `/assemble` | Retrieve + assemble context in one call |
-| POST | `/turn` | Store conversation turn with implicit feedback |
-| POST | `/feedback` | Log explicit feedback on a retrieved chunk |
+| GET | `/health` | Liveness probe (unversioned) |
 | GET | `/dashboard` | Real-time memory palace dashboard (HTML) |
-| GET | `/dashboard-data` | Dashboard data as JSON for frontend |
 | GET | `/metrics` | Machine-readable metrics for monitoring |
+| GET | `/v1/status` | Palace overview (rooms, loci, chunks, TFC state) |
+| POST | `/v1/search` | Hybrid search (`query`, `top_k`) |
+| POST | `/v1/store` | Store memory chunk (`content`, `room`, `locus`) |
+| POST | `/v1/assemble` | Retrieve + assemble context in one call |
+| POST | `/v1/turn` | Store conversation turn with implicit feedback |
+| POST | `/v1/feedback` | Log explicit feedback on a retrieved chunk |
+| GET | `/v1/dashboard-data` | Dashboard data as JSON for frontend |
 
 ### Authentication
 

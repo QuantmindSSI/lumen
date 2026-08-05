@@ -4,6 +4,7 @@
 
 | Version | Supported |
 |---|---|
+| 0.2.x (beta) | Security patches and bug fixes |
 | 0.1.x (alpha) | Security patches only |
 | < 0.1.0 | Not supported |
 
@@ -12,6 +13,25 @@
 Lumen takes security seriously. If you discover a vulnerability, please report it via the GitHub Security Advisory page or email.
 
 **Report via:** https://github.com/QuantumindSSI/lumen/security/advisories/new
+
+**PGP Key:** For sensitive disclosures, encrypt emails to:
+```
+security@lumen.ai
+```
+
+Public key (ED25519):
+```
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+mDMEanMX+xYJKwYBBAHaRw8BAQdAiouSUIUCncVCqE4b1SGOPOhxSdLtEFpEyCf9
+wIayqQi0J0x1bWVuIFNlY3VyaXR5IFRlYW0gPHNlY3VyaXR5QGx1bWVuLmFpPoiZ
+BBMWCgBBFiEEu67vrpF7GiE9+8oCvCSdz9W9rjEFAmpzF/sCGwMFCQPCZwAFCwkI
+BwICIgIGFQoJCAsCBBYCAwECHgcCF4AACgkQvCSdz9W9rjHYoAD+Kc+kZLioe+a/
+r3x0gJAwcquZkvICU/HqbuH2NWmjo0gA/A9RSYJ3cm7EcskEzfwbVTJSD75N2xMB
+WQYWQOYpjP4A
+=iER2
+-----END PGP PUBLIC KEY BLOCK-----
+```
 
 ### What to Include
 
@@ -50,9 +70,9 @@ Lumen takes security seriously. If you discover a vulnerability, please report i
 - File permissions enforced: `~/.lumen` should be `700`
 - Audit logs are stored in the SQLite `audit_log` table with structured entries
 
-## Known Limitations (Alpha)
+## Known Limitations (Beta)
 
-1. **No encryption at rest** — Lumen stores data in plaintext SQLite. The `encryption_provider` and `encryption_key` config fields were removed in v0.1.0-alpha to avoid false security posture. Use OS-level disk encryption (FileVault, BitLocker, LUKS) as a stopgap. SQLCipher integration is planned for v0.2.0.
+1. **No encryption at rest** — Lumen stores data in plaintext SQLite. Use OS-level disk encryption (FileVault, BitLocker, LUKS) as a stopgap. SQLCipher integration is planned for v0.3.0.
 2. **API authentication is opt-in** — `X-API-Key` header validation is implemented but disabled when `LUMEN_API_KEY` is unset. Set it before exposing the server to any network.
 3. **P2P sharing is plaintext** — Beam protocol transmits over TCP without transport encryption. It is intended for trusted household LANs only. Do not expose Beam to untrusted networks.
 4. **Sovereign mode blocks P2P and downloads** — When `LUMEN_SOVEREIGN=true` (default), P2P Beam sharing and HuggingFace model downloads are blocked with `SovereignViolationError`. The API CORS policy is also clamped to localhost origins. Sovereign mode does not sandbox the host OS or prevent other non-Lumen processes from making network calls.
@@ -78,5 +98,5 @@ Key dependencies and their security posture:
 
 ---
 
-*Last updated: 2026-07-20*  
+*Last updated: 2026-08-05*  
 *Maintainer: Lumen Security Team*

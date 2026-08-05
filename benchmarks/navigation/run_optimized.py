@@ -15,13 +15,11 @@ Outputs: benchmarks/navigation/results/navigation_results_real.json + .md
 from __future__ import annotations
 
 import json
-import math
 import re
 import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 

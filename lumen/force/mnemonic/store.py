@@ -179,21 +179,36 @@ def _resolve_locus(conn, room_id, locus_name, embedding, tenant_id: str = "defau
         ).fetchone()
         if row:
             return row[0]
-        if has_tenant:
-            cur = conn.execute("INSERT INTO locus(room_id, name, tenant_id) VALUES (?,?,?)", (room_id, locus_name, tenant_id))
-        else:
-            cur = conn.execute("INSERT INTO locus(room_id, name) VALUES (?,?)", (room_id, locus_name))
-        return cur.lastrowid
+        try:
+            if has_tenant:
+                cur = conn.execute("INSERT INTO locus(room_id, name, tenant_id) VALUES (?,?,?)", (room_id, locus_name, tenant_id))
+            else:
+                cur = conn.execute("INSERT INTO locus(room_id, name) VALUES (?,?)", (room_id, locus_name))
+            return cur.lastrowid
+        except sqlite3.IntegrityError:
+            row = conn.execute(
+                "SELECT locus_id FROM locus WHERE room_id=? AND name=?", (room_id, locus_name)
+            ).fetchone()
+            if row:
+                return row[0]
+            raise
     # Auto-placement
-    if has_tenant:
-        cur = conn.execute(
-            "INSERT INTO locus(room_id, name, tenant_id) VALUES (?,?,?)", (room_id, f"auto_{uuid.uuid4().hex[:8]}", tenant_id)
-        )
-    else:
-        cur = conn.execute(
-            "INSERT INTO locus(room_id, name) VALUES (?,?)", (room_id, f"auto_{uuid.uuid4().hex[:8]}")
-        )
-    return cur.lastrowid
+    max_attempts = 10
+    for _ in range(max_attempts):
+        auto_name = f"auto_{uuid.uuid4().hex}"
+        try:
+            if has_tenant:
+                cur = conn.execute(
+                    "INSERT INTO locus(room_id, name, tenant_id) VALUES (?,?,?)", (room_id, auto_name, tenant_id)
+                )
+            else:
+                cur = conn.execute(
+                    "INSERT INTO locus(room_id, name) VALUES (?,?)", (room_id, auto_name)
+                )
+            return cur.lastrowid
+        except sqlite3.IntegrityError:
+            continue
+    raise RuntimeError(f"Failed to insert locus after {max_attempts} attempts")
 
 
 def _trigger_interference_check(conn, room_id, locus_id, new_chunk_id, embedding):
