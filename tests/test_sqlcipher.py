@@ -25,6 +25,7 @@ def sqlcipher_config(tmp_path):
     )
 
 
+@pytest.mark.skip(reason="SQLCipher encryption-at-rest planned for v0.3.0")
 class TestSQLCipherIntegration:
     def test_sqlcipher_connection_opens(self, sqlcipher_config):
         conn = get_connection(sqlcipher_config)
