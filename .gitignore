@@ -88,7 +88,9 @@ credentials/
 !*.env.sample
 
 # Internal / local-only documentation and assets (not for public repo)
+AGENTS.md
 dev-docs/
 .opencode/
 ios/
+tmp/
 lumen/benchmarks/*/results/

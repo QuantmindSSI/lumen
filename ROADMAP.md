@@ -37,7 +37,7 @@ This document tracks the remaining work to move Lumen from beta (`v0.2.0-beta`) 
 - [x] Benchmark R@k / nDCG at FP16 precision level
 - [x] Benchmark R@k / nDCG at INT8 precision level
 - [x] Benchmark R@k / nDCG at BINARY precision level
-- [x] Document accuracy vs. storage trade-off curves in PRODUCTION_READINESS.md
+- [x] Document accuracy vs. storage trade-off curves
 
 ### 2.3 TFC Sensitivity Analysis
 - [x] Grid search across TFC parameters

@@ -249,7 +249,6 @@ ruff check lumen/ tests/             # Lint
 | [`SECURITY.md`](SECURITY.md) | Security policy and known limitations |
 | [`INTEGRATIONS.md`](INTEGRATIONS.md) | Integration guides for each platform |
 | [`ROADMAP.md`](ROADMAP.md) | Development milestones and open work |
-| [`PRODUCTION_READINESS.md`](PRODUCTION_READINESS.md) | Detailed readiness audit |
 | [`docs/Lumen_Agentic_Memory_Whitepaper_v2.md`](docs/Lumen_Agentic_Memory_Whitepaper_v2.md) | Technical white paper |
 
 ---
