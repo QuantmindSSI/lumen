@@ -27,7 +27,6 @@ MANIFEST
 *.spec
 
 # Virtual environments
-.env
 .venv
 env/
 venv/
@@ -82,7 +81,6 @@ benchmarks/results/
 *.crt
 secrets/
 credentials/
-.env*
 !.env.example
 !*.env.sample
 
@@ -95,3 +93,5 @@ branch_structure.json
 temp_auto_push.bat
 temp_interactive_push.bat
 .gitignore
+config.bat
+node_modules
