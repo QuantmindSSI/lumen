@@ -48,7 +48,7 @@ dependencies = [
     "msgspec>=0.18",
     "transitions>=0.9",
     "nevergrad>=1.0",
-    "psutil>=5.9",
+    "psutil>=7.2.2",
     "zeroconf>=0.132",
     "aiofiles>=23.0",
     # NLP / embeddings
