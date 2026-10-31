@@ -27,7 +27,7 @@ dependencies = [
     # Force A: Mnemonic
     "sqlite-vec>=0.1.0",
     "usearch>=2.0",
-    "kuzu>=0.4",
+    "kuzu>=0.11.3",
     "networkx>=3.0",
     "numpy>=1.26",
     "numba>=0.59",
