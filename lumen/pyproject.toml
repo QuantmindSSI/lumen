@@ -52,7 +52,7 @@ dependencies = [
     "zeroconf>=0.132",
     "aiofiles>=23.0",
     # NLP / embeddings
-    "spacy>=3.7",
+    "spacy>=3.8.16",
     "onnxruntime>=1.17",
     "optimum[onnxruntime]>=1.17",
     # Local LLM (optional, large)
